@@ -1,9 +1,17 @@
 'use client';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
+
+    useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+    script.async = true;
+    document.body.appendChild(script);
+    }, []);
+
     const router = useRouter();
     const [form, setForm] = useState({
         name: "",           // 이름
@@ -50,6 +58,19 @@ export default function SignupPage() {
         }
         setErrors((prev) => ({ ...prev, [name]: error }));
     };
+
+    // 주소 검색
+    const handleAddressSearch = () => {
+        new (window as any).daum.Postcode({
+            oncomplete: function (data: any) {
+                const jibunAddress = data.jibunAddress;
+                const {sido, sigungu, bname} = data;
+
+                const selectedAddress = jibunAddress || `${sido} ${sigungu} ${bname}`;
+                setForm((prev) => ({...prev, address: selectedAddress}));
+            },
+        }).open();
+    }
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -98,7 +119,10 @@ export default function SignupPage() {
                 <option value="M">남성</option>
                 <option value="F">여성</option>
             </select>
-            <input type="text" name="address" placeholder="주소" value={form.address} onChange={handleChange} required />
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input type="text" name="address" placeholder="주소" value={form.address} onChange={handleChange} readOnly required style={{ flex: 1 }} />
+                <button type="button" onClick={handleAddressSearch}>주소 검색</button>
+            </div>
             <input type="tel" name="phone" placeholder="전화번호" value={form.phone} onChange={handleChange} required />
             {errors.phone && <p style={{ color: "red" }}>{errors.phone}</p>}
             <button type="submit">가입하기</button>
