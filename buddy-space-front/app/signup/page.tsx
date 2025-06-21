@@ -15,8 +15,8 @@ export default function SignupPage() {
         phone: "",          // 전화번호호
     });
 
-    const [errors, setErrors] = useState({
-        name: "",
+    const [errors, setErrors] = useState({ // 이름, 이메일, 비밀번호, 전화번호 에러메세지
+        name: "", 
         email: "",
         password: "",
         phone: "",
@@ -56,7 +56,7 @@ export default function SignupPage() {
     ) => {
         const { name, value } = e.target;
         setForm({ ...form, [name]: value });
-
+        
         if (["name", "email", "password", "phone"].includes(name)) {
             validateField(name, value);
         }
@@ -74,7 +74,7 @@ export default function SignupPage() {
 
         try { // 백엔드에 회원가입 POST 요청
             await axios.post("http://localhost:8080/api/users/signup", { ...form, });
-            setServerMessage("회원가입 성공 로그인 페이지로 이동합니다.");
+            setServerMessage("회원가입 성공 로그인 페이지로 이동합니다."); // 회원가입 성공시 로그인 페이지로 이동
             setTimeout(() => router.push("/login"), 1500);
         } catch (error) { // 회원가입 실패시 에러
             setServerMessage("회원가입 실패: " + ((error as any).response?.data?.message || "에러 발생")
