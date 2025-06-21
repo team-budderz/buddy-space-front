@@ -23,9 +23,21 @@ export default function LoginPage() {
 
         try {
             //백엔드 로그인 API 호출
-            const res = await axios.post("http://localhost:8080/api/users/login", { email, password, });
+            //const res = await axios.post("http://localhost:8080/api/users/login", { email, password, });
+            //localStorage.setItem("token", res.data.token);
+            const res = await axios.post(
+                "http://localhost:8080/api/users/login",
+                { email, password},
+                {
+                    withCredentials: true, // refresh token cookie 수신
+                }
+            );
 
-            localStorage.setItem("token", res.data.token);
+            console.log("✅ 응답 전체", res); // ✅ 여기 추가
+            console.log("✅ 응답 데이터", res.data); // ✅ 여기 추가
+
+            // access token 만 저장
+            localStorage.setItem("accessToken", res.data.result.accessToken);
 
             router.push("/meeting");
         } catch (error) {
