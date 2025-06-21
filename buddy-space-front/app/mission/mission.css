@@ -1,0 +1,72 @@
+.mission-container {
+  max-width: 750px;
+  margin: 40px auto;
+  padding: 40px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background-color: white;
+}
+
+.mission-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 30px;
+}
+
+.mission-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group .react-datepicker-wrapper {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.error {
+  color: red;
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.button-group button {
+  padding: 10px 20px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: #f4f4f4;
+}
+
+.submit-btn {
+  background-color: #0070f3;
+  color: white;
+  border: none;
+}
+
+.submit-btn:hover {
+  background-color: #005cd7;
+}

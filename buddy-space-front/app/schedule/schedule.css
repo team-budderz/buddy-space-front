@@ -1,0 +1,164 @@
+/* schedule.css */
+
+/* 전체 레이아웃 */
+.calendar-container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background-color: #fff;
+  font-family: sans-serif;
+}
+
+/* 상단 헤더 */
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.calendar-header h2 {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0 12px;
+}
+
+.calendar-header button {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  background-color: #f8f8f8;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.create-btn {
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  font-weight: bold;
+  border-radius: 6px;
+}
+
+/* 일정 등록 폼 */
+.schedule-form {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  background-color: #f9f9f9;
+}
+
+.schedule-form input,
+.schedule-form textarea {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.schedule-form textarea {
+  height: 60px;
+  resize: vertical;
+}
+
+.schedule-form .date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.schedule-form button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+/* 달력 그리드 */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  border-top: 1px solid #ccc;
+}
+
+.day-label {
+  text-align: center;
+  padding: 6px 0;
+  font-weight: bold;
+  background-color: #f0f0f0;
+}
+
+.day-cell {
+  border: 1px solid #e5e5e5;
+  min-height: 80px;
+  padding: 4px;
+  position: relative;
+  background-color: #fff;
+}
+
+.day-number {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+/* 오늘 날짜 강조 (동그라미) */
+.day-number.today {
+  background-color: #facc15;
+  border-radius: 50%;
+  color: black;
+  font-weight: bold;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  text-align: center;
+  line-height: 24px;
+}
+
+/* 일정 막대 */
+.event-bar {
+  background-color: #c7d2fe; /* 연보라 형광펜 */
+  padding: 2px 4px;
+  font-size: 11px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* 일정 목록 (달력 하단) */
+.schedule-list {
+  margin-top: 32px;
+  border-top: 1px solid #ccc;
+  padding-top: 16px;
+}
+
+.schedule-item {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #f9fafb;
+}
+
+.schedule-item h4 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.schedule-item p {
+  margin: 2px 0;
+  font-size: 14px;
+}
