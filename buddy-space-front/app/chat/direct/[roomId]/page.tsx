@@ -100,7 +100,6 @@ export default function DirectChatPage() {
                                 <span>{msg.content}</span>
                                 {isMe && (
                                     <div className={styles.messageActions}>
-                                        {/* 수정 기능은 UI만 있고 아직 구현은 안함 */}
                                         <button onClick={() => deleteMessage(msg.messageId)}>삭제</button>
                                     </div>
                                 )}
