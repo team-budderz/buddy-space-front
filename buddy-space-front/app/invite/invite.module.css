@@ -1,0 +1,407 @@
+.mainHeader {
+  display: none !important;
+}
+
+.inviteContainer {
+  margin: 0;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.inviteCard {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 100%;
+  max-width: 450px;
+  text-align: center;
+  animation: cardFadeIn 0.6s ease-out;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.inviteHeader {
+  margin-bottom: 32px;
+}
+
+.logo {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.3));
+  font-size: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.inviteHeader h1 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.inviteContent {
+  margin-bottom: 32px;
+}
+
+/* 로딩 상태 */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(102, 126, 234, 0.2);
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingState p {
+  margin: 0;
+  color: #718096;
+  font-size: 0.95rem;
+}
+
+/* 모임 정보 */
+.groupInfo {
+  padding: 24px;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  margin-bottom: 24px;
+}
+
+.groupName {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 8px 0;
+}
+
+.groupDescription {
+  color: #4a5568;
+  font-size: 0.95rem;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+.memberCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* 에러 상태 */
+.errorState {
+  padding: 32px 0;
+  text-align: center;
+}
+
+.errorIcon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.errorTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #e53e3e;
+  margin: 0 0 8px 0;
+}
+
+.errorMessage {
+  color: #718096;
+  font-size: 0.95rem;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+/* 성공 상태 */
+.successState {
+  padding: 32px 0;
+  text-align: center;
+}
+
+.successIcon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.successTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #38a169;
+  margin: 0 0 8px 0;
+}
+
+.successMessage {
+  color: #4a5568;
+  font-size: 0.95rem;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+/* 버튼 스타일 */
+.inviteActions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn {
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.btnSecondary {
+  background: rgba(113, 128, 150, 0.1);
+  color: #4a5568;
+  border: 2px solid rgba(113, 128, 150, 0.2);
+}
+
+.btnSecondary:hover {
+  background: rgba(113, 128, 150, 0.15);
+  border-color: rgba(113, 128, 150, 0.3);
+  transform: translateY(-1px);
+}
+
+.btnSuccess {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+}
+
+.btnSuccess:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.5);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.btn:disabled::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .inviteContainer {
+    padding: 16px;
+  }
+
+  .inviteCard {
+    padding: 32px 24px;
+  }
+
+  .inviteHeader h1 {
+    font-size: 1.6rem;
+  }
+
+  .logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .groupName {
+    font-size: 1.2rem;
+  }
+
+  .btn {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .inviteCard {
+    padding: 24px 20px;
+  }
+
+  .inviteHeader h1 {
+    font-size: 1.4rem;
+  }
+
+  .logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .groupInfo {
+    padding: 20px;
+  }
+
+  .groupName {
+    font-size: 1.1rem;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .inviteContainer {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  }
+
+  .inviteCard {
+    background: rgba(26, 32, 44, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .inviteHeader h1 {
+    color: #e2e8f0;
+  }
+
+  .loadingState p {
+    color: #a0aec0;
+  }
+
+  .groupInfo {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.2);
+  }
+
+  .groupName {
+    color: #e2e8f0;
+  }
+
+  .groupDescription {
+    color: #cbd5e0;
+  }
+
+  .errorTitle {
+    color: #feb2b2;
+  }
+
+  .errorMessage {
+    color: #a0aec0;
+  }
+
+  .successTitle {
+    color: #9ae6b4;
+  }
+
+  .successMessage {
+    color: #cbd5e0;
+  }
+
+  .btnSecondary {
+    background: rgba(74, 85, 104, 0.3);
+    color: #e2e8f0;
+    border-color: rgba(74, 85, 104, 0.4);
+  }
+
+  .btnSecondary:hover {
+    background: rgba(74, 85, 104, 0.4);
+    border-color: rgba(74, 85, 104, 0.5);
+  }
+}
+
+
+/* 포커스 스타일 */
+.btn:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}

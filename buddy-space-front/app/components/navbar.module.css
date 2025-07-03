@@ -1,55 +1,377 @@
 .navbar {
-  width: 100%;
-  background-color: white;
-  border-bottom: 1px solid #ccc;
-}
-
-.header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.header img {
-  width: 40px;
-  height: 40px;
-}
-
-.searchBox {
+.logoSection {
   display: flex;
   align-items: center;
-  position: relative;
-  flex-grow: 1;
-  margin: 0 20px;
-  max-width: 400px;
+  text-decoration: none;
 }
 
-.searchBox input {
-  width: 100%;
-  padding: 8px 12px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
-  padding-right: 40px;
+.logoImage {
+  height: 40px;
+  width: auto;
+  transition: transform 0.2s ease;
+}
+
+.logoImage:hover {
+  transform: scale(1.05);
+}
+
+.searchSection {
+  flex: 1;
+  max-width: 500px;
+  margin: 0 40px;
+}
+
+.searchContainer {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 25px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.searchContainer:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.searchInput {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  background: transparent;
+}
+
+.searchInput::placeholder {
+  color: #9ca3af;
 }
 
 .searchButton {
-  position: absolute;
-  right: 10px;
-  background: none;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
   border: none;
-  color: gray;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
 }
 
-.buttonGroup button {
-  background: none;
-  border: none;
-  margin-left: 10px;
-  font-size: 24px;
-  color: gray;
+.searchButton:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+.navSection {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.dropdownWrapper {
+  position: relative;
+}
+
+.iconContainer {
+  position: relative;
   cursor: pointer;
 }
 
-.activeIcon {
-  color: green;
+.navIcon {
+  width: 28px;
+  height: 28px;
+  transition: all 0.3s ease;
+  filter: grayscale(0.2);
+}
+
+.navIcon:hover {
+  transform: scale(1.1);
+  filter: grayscale(0);
+}
+
+.profileImage {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #e2e8f0;
+  object-fit: cover;
+  transition: all 0.3s ease;
+}
+
+.profileImage:hover {
+  border-color: #3b82f6;
+  transform: scale(1.05);
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 400px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.dropdownMenu.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dropdownItem {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdownItem:hover {
+  background: #f9fafb;
+  color: #1f2937;
+}
+
+.dropdownItem:first-child {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.dropdownItem:last-child {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+/* 채팅 드롭다운 */
+.chatDropdown,
+.notificationDropdown {
+  padding: 0;
+}
+
+.chatHeader,
+.notificationHeader {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chatHeader h3,
+.notificationHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.notificationCount {
+  background: #ef4444;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.loadingMessage,
+.emptyMessage {
+  padding: 40px 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.chatList,
+.notificationList {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.chatItem,
+.notificationItem {
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.chatItem:hover {
+  background: #f8fafc;
+}
+
+.chatItem:last-child,
+.notificationItem:last-child {
+  border-bottom: none;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.chatItemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chatItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chatRoomName {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.unreadBadge {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+
+.lastMessage {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.messageText {
+  color: #64748b;
+  font-size: 13px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messageTime {
+  color: #9ca3af;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* 알림 스타일 */
+.notificationContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notificationText {
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.notificationMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.groupName {
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.notificationTime {
+  color: #9ca3af;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 8px 16px;
+  }
+
+  .searchSection {
+    margin: 0 20px;
+  }
+
+  .navSection {
+    gap: 12px;
+  }
+
+  .dropdownMenu {
+    min-width: 280px;
+    right: -20px;
+  }
+
+  .navIcon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .profileImage {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .searchSection {
+    display: none;
+  }
+
+  .dropdownMenu {
+    min-width: 260px;
+    right: -40px;
+  }
 }

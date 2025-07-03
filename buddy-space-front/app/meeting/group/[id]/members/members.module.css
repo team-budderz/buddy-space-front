@@ -1,0 +1,655 @@
+/* 멤버 페이지 스타일 */
+.membersContainer {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.membersHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.membersTitle h2 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.membersTitle span {
+  color: #667eea;
+  font-weight: 500;
+}
+
+.inviteButton {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.inviteButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.membersList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.memberItem {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: rgba(248, 250, 252, 0.6);
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.memberItem:hover {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(102, 126, 234, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.memberItem.currentUser {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+.memberAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-right: 16px;
+}
+
+.memberAvatar:hover {
+  transform: scale(1.05);
+  border-color: #667eea;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.memberInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memberName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.memberRole {
+  font-size: 0.85rem;
+  color: #718096;
+  margin: 0;
+  padding: 2px 8px;
+  background: rgba(113, 128, 150, 0.1);
+  border-radius: 8px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.memberRole.leader {
+  background: rgba(245, 101, 101, 0.1);
+  color: #e53e3e;
+}
+
+.memberRole.subleader {
+  background: rgba(237, 137, 54, 0.1);
+  color: #dd6b20;
+}
+
+.memberMenu {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(113, 128, 150, 0.1);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: #718096;
+  font-size: 1.2rem;
+}
+
+.memberMenu:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  transform: scale(1.1);
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #718096;
+  font-style: italic;
+}
+
+.error {
+  text-align: center;
+  padding: 40px;
+  color: #e53e3e;
+  background: rgba(245, 101, 101, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(245, 101, 101, 0.2);
+}
+
+/* 모달 스타일 */
+.modal {
+  display: flex;
+  position: fixed;
+  z-index: 2000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+}
+
+.modalContent {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 24px;
+  border-radius: 20px;
+  max-width: 400px;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #718096;
+  transition: color 0.3s ease;
+}
+
+.close:hover {
+  color: #2d3748;
+}
+
+.modalImage {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto 16px;
+  border: 3px solid rgba(102, 126, 234, 0.3);
+}
+
+.modalInfo {
+  text-align: center;
+}
+
+.modalInfo p {
+  margin: 0;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+/* 메뉴 모달 */
+.menuModalContent {
+  max-width: 200px;
+  padding: 16px;
+}
+
+.menuOptions {
+  display: flex;
+  flex-direction: column;
+}
+
+.menuOption {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  color: #4a5568;
+  margin-bottom: 4px;
+}
+
+.menuOption:last-child {
+  margin-bottom: 0;
+}
+
+.menuOption:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+}
+
+.menuOption.danger {
+  color: #e53e3e;
+}
+
+.menuOption.danger:hover {
+  background: rgba(245, 101, 101, 0.1);
+  color: #c53030;
+}
+
+/* 초대 모달 스타일 */
+.inviteModalContent {
+  max-width: 500px;
+  padding: 32px;
+}
+
+.inviteModalContent h3 {
+  margin: 0 0 24px 0;
+  color: #2d3748;
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.inviteInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.inviteDescription {
+  text-align: center;
+  color: #4a5568;
+  font-size: 0.95rem;
+  margin: 0;
+  padding: 16px;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.inviteLinkContainer,
+.inviteCodeContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inviteLinkContainer label,
+.inviteCodeContainer label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.linkInputGroup,
+.codeInputGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.linkInputGroup input,
+.codeInputGroup input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid rgba(226, 232, 240, 0.6);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  background: rgba(248, 250, 252, 0.8);
+  color: #2d3748;
+  font-family: "Monaco", "Menlo", monospace;
+}
+
+.linkInputGroup input:focus,
+.codeInputGroup input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.copyBtn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.copyBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.inviteActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.createBtn,
+.refreshBtn {
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refreshBtn {
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+}
+
+.createBtn:hover,
+.refreshBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.createBtn:disabled,
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  pointer-events: none;
+}
+
+/* 토스트 메시지 */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: rgba(26, 32, 44, 0.95);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 10000;
+  opacity: 0;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 탈퇴 섹션 */
+.withdrawSection {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(226, 232, 240, 0.5);
+  display: flex;
+  justify-content: center;
+}
+
+.withdrawButton {
+  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(229, 62, 62, 0.3);
+}
+
+.withdrawButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(229, 62, 62, 0.4);
+  background: linear-gradient(135deg, #c53030 0%, #9c2626 100%);
+}
+
+.withdrawButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(229, 62, 62, 0.3);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .membersContainer {
+    padding: 16px;
+  }
+
+  .membersHeader {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .inviteButton {
+    align-self: stretch;
+    text-align: center;
+  }
+
+  .withdrawSection {
+    margin-top: 32px;
+    padding-top: 20px;
+  }
+
+  .withdrawButton {
+    width: 100%;
+    padding: 14px 24px;
+  }
+
+  .memberItem {
+    padding: 12px;
+  }
+
+  .memberAvatar {
+    width: 40px;
+    height: 40px;
+    margin-right: 12px;
+  }
+
+  .memberName {
+    font-size: 0.9rem;
+  }
+
+  .memberRole {
+    font-size: 0.8rem;
+  }
+
+  .modalContent {
+    max-width: 90%;
+    margin: 20px;
+  }
+
+  .inviteModalContent {
+    max-width: 90%;
+    padding: 24px;
+  }
+
+  .linkInputGroup,
+  .codeInputGroup {
+    flex-direction: column;
+  }
+
+  .copyBtn {
+    align-self: stretch;
+  }
+
+  .inviteActions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .membersHeader h2 {
+    font-size: 1.3rem;
+  }
+
+  .memberItem {
+    padding: 10px;
+  }
+
+  .memberAvatar {
+    width: 36px;
+    height: 36px;
+    margin-right: 10px;
+  }
+
+  .memberMenu {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+  }
+}
+
+/* 다크모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .membersTitle h2 {
+    color: #e2e8f0;
+  }
+
+  .withdrawSection {
+    border-top-color: rgba(74, 85, 104, 0.5);
+  }
+
+  .memberItem {
+    background: rgba(45, 55, 72, 0.6);
+    border-color: rgba(74, 85, 104, 0.4);
+  }
+
+  .memberItem:hover {
+    background: rgba(45, 55, 72, 0.8);
+  }
+
+  .memberItem.currentUser {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+  }
+
+  .memberName {
+    color: #e2e8f0;
+  }
+
+  .memberRole {
+    background: rgba(113, 128, 150, 0.2);
+    color: #a0aec0;
+  }
+
+  .memberMenu {
+    background: rgba(113, 128, 150, 0.2);
+    color: #a0aec0;
+  }
+
+  .memberMenu:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: #90cdf4;
+  }
+
+  .modalContent {
+    background: rgba(26, 32, 44, 0.95);
+    border-color: rgba(74, 85, 104, 0.3);
+  }
+
+  .close {
+    color: #a0aec0;
+  }
+
+  .close:hover {
+    color: #e2e8f0;
+  }
+
+  .modalInfo p {
+    color: #cbd5e0;
+  }
+
+  .menuOption {
+    color: #cbd5e0;
+  }
+
+  .menuOption:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: #90cdf4;
+  }
+
+  .loading {
+    color: #a0aec0;
+  }
+
+  .error {
+    color: #feb2b2;
+    background: rgba(245, 101, 101, 0.2);
+    border-color: rgba(245, 101, 101, 0.3);
+  }
+
+  .inviteModalContent h3 {
+    color: #e2e8f0;
+  }
+
+  .inviteDescription {
+    color: #cbd5e0;
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.2);
+  }
+
+  .inviteLinkContainer label,
+  .inviteCodeContainer label {
+    color: #cbd5e0;
+  }
+
+  .linkInputGroup input,
+  .codeInputGroup input {
+    background: rgba(45, 55, 72, 0.8);
+    border-color: rgba(74, 85, 104, 0.6);
+    color: #e2e8f0;
+  }
+
+  .linkInputGroup input:focus,
+  .codeInputGroup input:focus {
+    border-color: #90cdf4;
+    box-shadow: 0 0 0 3px rgba(144, 205, 244, 0.1);
+  }
+}

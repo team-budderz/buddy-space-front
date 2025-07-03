@@ -1,0 +1,310 @@
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.groupNav {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  animation: fadeInUp 0.6s ease-out;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.navLink {
+  text-decoration: none;
+  color: #718096;
+  padding: 12px 20px;
+  border-radius: 14px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navLink::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.navLink:hover::before {
+  left: 100%;
+}
+
+.navLink:hover {
+  color: #4a5568;
+  transform: translateY(-1px);
+}
+
+.navLink.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.tabIcon {
+  font-size: 1.1rem;
+}
+
+.tabText {
+  font-size: 0.95rem;
+}
+
+.groupContent {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  padding: 40px;
+  min-height: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.loadingSpinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(102, 126, 234, 0.2);
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+.loadingContainer p {
+  color: #718096;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.errorContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 20px;
+}
+
+.errorMessage {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+}
+
+.errorMessage h2 {
+  color: #e53e3e;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.errorMessage p {
+  color: #718096;
+  font-size: 1rem;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.backButton {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.backButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding: 15px;
+  }
+
+  .groupNav {
+    padding: 8px;
+    gap: 4px;
+  }
+
+  .navLink {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  .tabText {
+    font-size: 0.85rem;
+  }
+
+  .groupContent {
+    padding: 24px;
+  }
+
+  .errorMessage {
+    padding: 30px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .groupNav {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .groupNav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navLink {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .tabText {
+    display: none;
+  }
+
+  .tabIcon {
+    font-size: 1.2rem;
+  }
+
+  .groupContent {
+    padding: 20px;
+  }
+
+  .loadingContainer {
+    padding: 40px 20px;
+  }
+
+  .errorMessage {
+    padding: 24px 16px;
+  }
+
+  .errorMessage h2 {
+    font-size: 1.3rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .main {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  }
+
+  .groupNav {
+    background: rgba(26, 32, 44, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .navLink {
+    color: #a0aec0;
+  }
+
+  .navLink:hover {
+    color: #e2e8f0;
+  }
+
+  .groupContent {
+    background: rgba(26, 32, 44, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .errorMessage {
+    background: rgba(26, 32, 44, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .errorMessage h2 {
+    color: #feb2b2;
+  }
+
+  .errorMessage p {
+    color: #a0aec0;
+  }
+
+  .loadingContainer p {
+    color: #a0aec0;
+  }
+
+  .loadingSpinner {
+    border-color: rgba(144, 205, 244, 0.2);
+    border-top-color: #90cdf4;
+  }
+}
+
+
+.navLink:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+.backButton:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
