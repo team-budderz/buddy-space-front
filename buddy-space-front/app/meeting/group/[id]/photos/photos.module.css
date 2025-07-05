@@ -1,12 +1,12 @@
 .groupContent {
   padding: 0;
   background: #f8fafc;
-  min-height: calc(100vh - 120px);
+  min-height: auto;
 }
 
 .photoAlbumContainer {
   display: flex;
-  height: calc(100vh - 120px);
+  min-height: auto;
   background: white;
   border-radius: 12px;
   margin: 20px;
@@ -97,7 +97,7 @@
 .photoMainContent {
   flex: 1;
   padding: 24px;
-  overflow-y: auto;
+  overflow-y: hidden;
   background: white;
 }
 
@@ -232,7 +232,7 @@
   height: 100%;
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
-  display: none;
+  display: flex;
   justify-content: center;
   align-items: center;
   z-index: 10000;
@@ -240,9 +240,7 @@
   box-sizing: border-box;
 }
 
-.mediaModal.active {
-  display: flex;
-}
+
 
 .modalContent {
   position: relative;

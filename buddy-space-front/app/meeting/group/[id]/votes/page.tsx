@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useEffect, useState, type FormEvent } from "react"
+import { format, parseISO } from 'date-fns'
 import { useParams } from "next/navigation"
 import { createPortal } from "react-dom"
 import { useGroupPermissions } from "../layout"
@@ -32,6 +33,7 @@ interface VoteDetail {
   options: VoteOption[]
   authorName: string
   authorId: number
+  authorImageUrl: string | null
   createdAt: string
 }
 
@@ -56,7 +58,7 @@ function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: 
 
 export default function VotePage() {
   const { id: groupId } = useParams()
-  const { getCurrentUserId, getCurrentUserRole, isSubLeaderOrAbove, isMemberOrAbove } = useGroupPermissions()
+  const { getCurrentUserId, getCurrentUserRole, isSubLeaderOrAbove, isMemberOrAbove, hasPermission } = useGroupPermissions()
 
   const [votes, setVotes] = useState<VoteSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -78,30 +80,48 @@ export default function VotePage() {
 
   const [menuVisible, setMenuVisible] = useState<{ [key: number]: boolean }>({})
 
-  const currentUserId = getCurrentUserId()
+  const rawUserId = getCurrentUserId()
+  const currentUserId = rawUserId === undefined ? null : Number(rawUserId)
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null) // 현재 사용자 이름 상태 추가
+  const [detailSummary, setDetailSummary] = useState<VoteSummary | null>(null)
 
-  // 권한 체크 함수들
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const res = await api.get("/users/me")
+        if (res.data.result && res.data.result.name) {
+          setCurrentUserName(res.data.result.name)
+        }
+      } catch (error) {
+        console.error("Failed to fetch current user name:", error)
+      }
+    }
+    fetchUserName()
+  }, [])
+
+  // 투표 수정 : 오직 작성자 본인만 (이름 비교)
   const canEditVote = (vote: VoteSummary | VoteDetail): boolean => {
-    if (!currentUserId) return false
-    // 작성자이거나 부리더 이상인 경우
-    return vote.authorId === currentUserId || isSubLeaderOrAbove()
+    if (!currentUserName) return false
+    return vote.authorName === currentUserName
   }
 
+  // 투표 삭제: 작성자 본인 (이름 비교) or DELETE_VOTE 권한
   const canDeleteVote = (vote: VoteSummary | VoteDetail): boolean => {
-    if (!currentUserId) return false
-    // 작성자이거나 부리더 이상인 경우
-    return vote.authorId === currentUserId || isSubLeaderOrAbove()
+    if (!currentUserName) return false
+    return vote.authorName === currentUserName || hasPermission("DELETE_VOTE")
   }
 
+  // 투표 생성권한: CREATE_VOTE 권한
   const canCreateVote = (): boolean => {
-    return isMemberOrAbove()
+    return hasPermission("CREATE_VOTE")
   }
 
+  // 투표 종료권한: 오직 작성자 본인만 (이름 비교)
   const canCloseVote = (vote: VoteDetail): boolean => {
-    if (!currentUserId) return false
-    // 작성자이거나 부리더 이상인 경우
-    return vote.authorId === currentUserId || isSubLeaderOrAbove()
+    if (!currentUserName) return false
+    return vote.authorName === currentUserName
   }
+
 
   useEffect(() => {
     if (groupId) {
@@ -114,7 +134,15 @@ export default function VotePage() {
     try {
       const response = await api.get(`/groups/${groupId}/votes`)
       if (response.status === 200 && response.data.result) {
-        setVotes(response.data.result || [])
+        const list: VoteSummary[] = response.data.result.map((v: any) => ({
+          voteId: v.voteId,
+          title: v.title,
+          isClosed: v.isClosed,
+          authorName: v.authorName,
+          authorId: v.authorId,
+          createdAt: v.createdAt,
+        }))
+        setVotes(list)
       }
     } catch (error) {
       console.error("Failed to fetch votes:", error)
@@ -124,12 +152,32 @@ export default function VotePage() {
     }
   }
 
+
   const fetchVoteDetail = async (voteId: number) => {
     setLoadingDetail(true)
     try {
+      const summary = votes.find(v => v.voteId === voteId)
+
       const response = await api.get(`/groups/${groupId}/votes/${voteId}`)
       if (response.status === 200 && response.data.result) {
-        setSelectedVote(response.data.result)
+        const detailFromApi: VoteDetail = response.data.result
+        let authorImageUrl = detailFromApi.authorImageUrl || "/placeholder.svg" // Use existing image or default
+        try {
+          if (!detailFromApi.authorImageUrl && detailFromApi.authorId) { // Only fetch if not already provided and authorId exists
+            const userRes = await api.get(`/users/${detailFromApi.authorId}`)
+            if (userRes.data.result && userRes.data.result.imageUrl) {
+              authorImageUrl = userRes.data.result.imageUrl
+            }
+          }
+        } catch (userErr) {
+          console.error("Failed to fetch author image:", userErr)
+        }
+
+        setSelectedVote({
+          ...detailFromApi,
+          authorId: detailFromApi.authorId ?? summary!.authorId,
+          authorImageUrl: authorImageUrl,
+        })
         setShowDetailModal(true)
       }
     } catch (error) {
@@ -139,6 +187,7 @@ export default function VotePage() {
       setLoadingDetail(false)
     }
   }
+
 
   const handleCreateVote = async (e: FormEvent) => {
     e.preventDefault()
@@ -325,6 +374,18 @@ export default function VotePage() {
     }))
   }
 
+  useEffect(() => {
+    if (selectedVote) {
+      console.log(
+        "▶ currentUserId vs authorId:",
+        currentUserId,
+        selectedVote.authorId,
+        "isSubLeaderOrAbove:",
+        isSubLeaderOrAbove()
+      )
+    }
+  }, [selectedVote, currentUserId, isSubLeaderOrAbove])
+
   return (
     <>
       <div className={styles.container}>
@@ -346,22 +407,30 @@ export default function VotePage() {
           </div>
         ) : (
           <ul className={styles.voteList}>
-            {votes.map((vote) => (
-              <li key={vote.voteId} className={styles.voteItem}>
-                <div className={styles.voteContent} onClick={() => fetchVoteDetail(vote.voteId)}>
-                  <div className={styles.voteTitle}>{vote.title}</div>
-                  <div className={styles.voteMeta}>
-                    <span className={`${styles.status} ${vote.isClosed ? styles.closed : styles.active}`}>
-                      {vote.isClosed ? "종료됨" : "진행중"}
-                    </span>
-                    <span>{vote.createdAt}</span>
-                    <span>작성자: {vote.authorName}</span>
+            {votes.map((vote) => {
+              console.log(`[VOTE LIST] Vote ID: ${vote.voteId}, Author ID: ${vote.authorId}, Current User ID: ${currentUserId}`)
+              return (
+                <li key={vote.voteId} className={styles.voteItem}>
+                  {/* voteId 숫자를 넘겨줍니다 */}
+                  <div
+                    className={styles.voteContent}
+                    onClick={() => fetchVoteDetail(vote.voteId)}
+                  >
+                    <div className={styles.voteTitle}>{vote.title}</div>
+                    <div className={styles.voteMeta}>
+                      <span className={`${styles.status} ${vote.isClosed ? styles.closed : styles.active}`}>
+                        {vote.isClosed ? "종료됨" : "진행중"}
+                      </span>
+                      <span>{vote.createdAt}</span>
+                      <span>작성자: {vote.authorName}</span>
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         )}
+
       </div>
 
       <ModalPortal isOpen={showCreateModal}>
@@ -511,67 +580,77 @@ export default function VotePage() {
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             {selectedVote && (
               <>
+                {/* 상세 모달 헤더 */}
                 <div className={styles.detailHeader}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ flex: 1 }}>
-                      <h2 className={styles.modalTitle}>{selectedVote.title}</h2>
-                      <div className={styles.detailMeta}>
-                        <span className={`${styles.status} ${selectedVote.isClosed ? styles.closed : styles.active}`}>
-                          {selectedVote.isClosed ? "종료됨" : "진행중"}
-                        </span>
-                        <span>{selectedVote.isAnonymous ? "익명 투표" : "공개 투표"}</span>
-                        <span>작성자: {selectedVote.authorName}</span>
-                        <span>{selectedVote.createdAt}</span>
+                  <div className={styles.authorInfo}>
+                    <img
+                      src={selectedVote.authorImageUrl || "/placeholder.svg"}
+                      alt="avatar"
+                      className={styles.avatar}
+                    />
+                    <div>
+                      <div className={styles.authorName}>{selectedVote.authorName}</div>
+                      <div className={styles.postDate}>
+                        {format(parseISO(selectedVote.createdAt), 'yyyy년 MM월 dd일')}
                       </div>
                     </div>
-
-                    {(canEditVote(selectedVote) || canDeleteVote(selectedVote)) && (
-                      <div className={styles.menuWrapper} onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className={styles.menuBtn}
-                          onClick={() =>
-                            setMenuVisible((prev) => ({ ...prev, [selectedVote.voteId]: !prev[selectedVote.voteId] }))
-                          }
-                          title="메뉴"
-                        >
-                          ⋯
-                        </button>
-                        {menuVisible[selectedVote.voteId] && (
-                          <div className={styles.menuList}>
-                            {canEditVote(selectedVote) && (
-                              <button
-                                onClick={() => {
-                                  setMenuVisible((prev) => ({ ...prev, [selectedVote.voteId]: false }))
-                                  openEditModal({
-                                    voteId: selectedVote.voteId,
-                                    title: selectedVote.title,
-                                    isClosed: selectedVote.isClosed,
-                                    authorName: selectedVote.authorName,
-                                    authorId: selectedVote.authorId,
-                                    createdAt: selectedVote.createdAt,
-                                  })
-                                  setShowDetailModal(false)
-                                }}
-                                disabled={selectedVote.isClosed}
-                              >
-                                수정하기
-                              </button>
-                            )}
-                            {canDeleteVote(selectedVote) && (
-                              <button
-                                onClick={() => {
-                                  setMenuVisible((prev) => ({ ...prev, [selectedVote.voteId]: false }))
-                                  handleDeleteVote(selectedVote.voteId)
-                                }}
-                              >
-                                삭제하기
-                              </button>
-                            )}
-                          </div>
+                  </div>
+                  <div className={styles.menuWrapper} onClick={(e) => e.stopPropagation()}>
+                    {(selectedVote.authorId === currentUserId || isSubLeaderOrAbove()) && (
+                      <button
+                        className={styles.menuBtn}
+                        onClick={() =>
+                          setMenuVisible((prev) => ({
+                            ...prev,
+                            [selectedVote.voteId]: !prev[selectedVote.voteId],
+                          }))
+                        }
+                        title="메뉴"
+                      >
+                        ⋯
+                      </button>
+                    )}
+                    {menuVisible[selectedVote.voteId] && (
+                      <div className={styles.menuList}>
+                        {canEditVote(selectedVote) && (
+                          <button
+                            onClick={() => {
+                              setMenuVisible((prev) => ({ ...prev, [selectedVote.voteId]: false }))
+                              openEditModal({
+                                voteId: selectedVote.voteId,
+                                title: selectedVote.title,
+                                isClosed: selectedVote.isClosed,
+                                authorName: selectedVote.authorName,
+                                authorId: selectedVote.authorId,
+                                createdAt: selectedVote.createdAt,
+                              })
+                              setShowDetailModal(false)
+                            }}
+                            disabled={selectedVote.isClosed}
+                          >
+                            수정하기
+                          </button>
+                        )}
+                        {canDeleteVote(selectedVote) && (
+                          <button
+                            onClick={() => {
+                              setMenuVisible((prev) => ({ ...prev, [selectedVote.voteId]: false }))
+                              handleDeleteVote(selectedVote.voteId)
+                            }}
+                          >
+                            삭제하기
+                          </button>
                         )}
                       </div>
                     )}
                   </div>
+                </div>
+                <h2 className={styles.modalTitle}>{selectedVote.title}</h2>
+                <div className={styles.detailMeta}>
+                  <span className={`${styles.status} ${selectedVote.isClosed ? styles.closed : styles.active}`}>
+                    {selectedVote.isClosed ? "종료됨" : "진행중"}
+                  </span>
+                  <span>{selectedVote.isAnonymous ? "익명 투표" : "공개 투표"}</span>
                 </div>
 
                 {loadingDetail ? (

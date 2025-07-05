@@ -99,115 +99,52 @@ export default function CreatePage() {
     return true
   }
 
-  const loadChatRooms = async () => {
-    try {
-      const token = localStorage.getItem("accessToken")
-      if (!token) {
-        console.error("토큰이 없습니다.")
-        return
-      }
-
-      const response = await fetch(`http://localhost:8080/api/chat/rooms/my`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        // 채팅방 목록 업데이트
-        console.log("채팅방 목록:", data.result)
-      }
-    } catch (error) {
-      console.error("채팅방 목록 로드 실패:", error)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     clearError()
-
-    if (!validateForm()) {
-      return
-    }
-
+    if (!validateForm()) return
     setIsSubmitting(true)
 
     try {
       const submitFormData = new FormData()
-
-      const request = new Blob(
-        [
-          JSON.stringify({
-            name: formData.name,
-            access: formData.access,
-            type: formData.type,
-            interest: formData.interest,
-          }),
-        ],
-        { type: "application/json" }
-      )
-
+      const request = new Blob([
+        JSON.stringify(formData)
+      ], { type: "application/json" })
       submitFormData.append("request", request)
+      if (coverImage) submitFormData.append("coverImage", coverImage)
 
-      if (coverImage) {
-        submitFormData.append("coverImage", coverImage)
-      }
-
-      // 1. 그룹 생성 요청
-      const response = await api.post("/groups", submitFormData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const groupRes = await api.post("/groups", submitFormData, {
+        headers: { "Content-Type": "multipart/form-data" },
       })
-      console.log("생성된 그룹 응답:", response.data)
 
-      // 그룹 ID 확인
-      const result = response.data.result
-      console.log("그룹 생성 응답 내용:", result)  // result 객체 내용 확인
+      const group = groupRes.data.result
+      const groupId = group.groupId || group.id
+      const groupName = group.name || formData.name
+      if (!groupId) throw new Error("그룹 ID가 없습니다.")
 
-      // result에서 groupId 추출
-      const groupId = result.groupId || result.id  // 응답 구조에 맞는 key 사용
-      const groupName = result.groupName || result.name // 이름 추출
-
-      if (!groupId) {
-        throw new Error("그룹 ID가 없습니다.")
-      }
-
-      // 2. 그룹 채팅방 생성 요청
       const token = localStorage.getItem("accessToken")
       if (!token) throw new Error("토큰이 없습니다.")
 
-      const chatResponse = await fetch(
-        `http://localhost:8080/api/group/${groupId}/chat/rooms`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // 토큰 확인
-          },
-          credentials: "include", // 세션을 포함
-          body: JSON.stringify({
-            name: groupName,
-            description: `${groupName}의 전체 채팅방입니다.`,
-            chatRoomType: "GROUP",
-            participantIds: [], // 참여자 아이디 추가
-          }),
-        }
-      )
+      const chatRes = await fetch(`http://localhost:8080/api/group/${groupId}/chat/rooms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          name: groupName,
+          description: `${groupName}의 전체 채팅방입니다.`,
+          chatRoomType: "GROUP",
+          participantIds: [],
+        }),
+      })
 
-      const chatData = await chatResponse.json()
-
-      if (chatResponse.ok && chatData.result?.roomId) {
-        showSuccess("모임 및 채팅방이 성공적으로 생성되었습니다!")
-        // 그룹 생성 및 채팅방 생성 후, 채팅방 목록을 다시 로드하여 NavBar에 반영
-        await loadChatRooms()  // loadChatRooms 호출
-        setTimeout(() => {
-          router.push(`/chat/${groupId}`)
-        }, 1500)
+      const chatData = await chatRes.json()
+      if (chatRes.ok && chatData.result?.roomId) {
+        setErrorMessage("모임 및 채팅방이 성공적으로 생성되었습니다!")
+        console.log(" 그룹 및 채팅방 생성 완료")
+        setTimeout(() => router.push("/meeting"), 1500)
       } else {
         throw new Error("채팅방 생성 실패")
       }
@@ -218,6 +155,7 @@ export default function CreatePage() {
       setIsSubmitting(false)
     }
   }
+
 
 
 

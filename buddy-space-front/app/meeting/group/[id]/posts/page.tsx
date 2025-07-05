@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useGroupPermissions } from "../layout"
+import { useGroupPermissions, usePermissionChecker } from "../layout"
 import styles from "./posts.module.css"
 import api from "@/app/api"
 
@@ -44,7 +44,8 @@ export default function PostsPage() {
   const router = useRouter()
   const groupId = params.id as string
 
-  const { isLoading: permissionsLoading, isMemberOrAbove } = useGroupPermissions()
+  const { isLoading: permissionsLoading } = useGroupPermissions()
+  const { canCreatePost } = usePermissionChecker()
 
   useEffect(() => {
     if (!permissionsLoading) {
@@ -133,9 +134,20 @@ export default function PostsPage() {
 
   // 게시글 날짜 포맷팅
   const formatPostDate = (dateString: string) => {
-    return dateString.replace("T", " ").substring(0, 16)
-  }
+    const now = new Date()
+    const postDate = new Date(dateString)
+    const diffMs = now.getTime() - postDate.getTime()
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMinutes / 60)
+    const diffDays = Math.floor(diffHours / 24)
 
+    if (diffMinutes < 1) return "방금 전"
+    if (diffMinutes < 60) return `${diffMinutes}분 전`
+    if (diffHours < 24) return `${diffHours}시간 전`
+    if (diffDays < 7) return `${diffDays}일 전`
+
+    return `${postDate.getFullYear()}년 ${postDate.getMonth() + 1}월 ${postDate.getDate()}일`
+  }
   // 게시글 작성 페이지로 이동
   const goToPostCreate = () => {
     router.push(`/meeting/group/${groupId}/posts/create`)
@@ -199,7 +211,7 @@ export default function PostsPage() {
             <span className={styles.titleIcon}>📝</span>
             게시글
           </h2>
-          {isMemberOrAbove() && (
+          {canCreatePost() && (
             <button onClick={goToPostCreate} className={styles.createButton}>
               <span className={styles.buttonIcon}>✏️</span>
               게시글 작성
@@ -236,11 +248,10 @@ export default function PostsPage() {
                           alt={post.userName}
                           className={styles.postAvatar}
                         />
-                        <div className={styles.postAuthorInfo}>
-                          <div className={styles.postAuthor}>{post.userName}</div>
+                        <div className={styles.authorInfo}>
+                          <div className={styles.userName}>{post.userName}</div>
                           <div className={styles.postDate}>{formatPostDate(post.createdAt)}</div>
                         </div>
-                        {post.isNotice && <div className={styles.noticeBadge}>공지</div>}
                       </div>
                       <div className={styles.postText}>
                         {textPreview}

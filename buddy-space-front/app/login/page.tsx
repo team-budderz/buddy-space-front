@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
@@ -51,6 +50,11 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleGoogleLogin = () => {
+    // 기존 OAuth2 엔드포인트 사용
+    window.location.href = "http://localhost:8080/oauth2/authorization/google"
   }
 
   return (
@@ -111,14 +115,7 @@ export default function LoginPage() {
         </div>
 
         <div className={styles.socialLogin}>
-          <button
-            className={styles.socialButton}
-            type="button"
-            onClick={() => {
-              const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
-              window.location.href = `${base}/oauth2/authorization/google`;
-            }}
-          >
+          <button className={styles.socialButton} type="button" onClick={handleGoogleLogin}>
             <svg className={styles.socialIcon} viewBox="0 0 24 24">
               <path
                 fill="currentColor"
@@ -139,7 +136,6 @@ export default function LoginPage() {
             </svg>
             Google로 로그인
           </button>
-
         </div>
 
         <div className={styles.footer}>
@@ -151,6 +147,6 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
-    </div >
+    </div>
   )
 }

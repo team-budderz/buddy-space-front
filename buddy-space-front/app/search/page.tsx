@@ -23,6 +23,19 @@ const groupInterestMap: Record<string,string> = {
   OTHER: '기타',
 }
 
+const interests = [
+  { value: '', label: '전체' },
+  { value: 'HOBBY', label: '취미' },
+  { value: 'FAMILY', label: '가족' },
+  { value: 'SCHOOL', label: '학교' },
+  { value: 'BUSINESS', label: '업무' },
+  { value: 'EXERCISE', label: '운동' },
+  { value: 'GAME', label: '게임' },
+  { value: 'STUDY', label: '스터디' },
+  { value: 'FAN', label: '팬' },
+  { value: 'OTHER', label: '기타' },
+]
+
 export default function SearchPage() {
   const params = useSearchParams()
   const keywordParam = params.get('keyword') || ''
@@ -123,14 +136,14 @@ export default function SearchPage() {
 
       <section className={styles['interest-filter-container']}>
         <div className={styles['interest-filters']}>
-          {Object.entries(groupInterestMap).map(([key, label]) => (
+          {interests.map((interestItem) => (
             <button
-              key={key}
-              data-interest={key}
-              className={`${styles['interest-filter']} ${interest === key ? styles.active : ''}`}
-              onClick={() => onFilterClick(key)}
+              key={interestItem.value}
+              data-interest={interestItem.value}
+              className={`${styles['interest-filter']} ${interest === interestItem.value ? styles.active : ''}`}
+              onClick={() => onFilterClick(interestItem.value)}
             >
-              {label}
+              {interestItem.label}
             </button>
           ))}
         </div>

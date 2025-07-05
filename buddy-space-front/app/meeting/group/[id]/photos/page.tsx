@@ -3,6 +3,21 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams } from "next/navigation";
 import styles from "./photos.module.css"
+import { createPortal } from "react-dom"
+
+// ModalPortal 컴포넌트 추가
+function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  if (!mounted || !isOpen) return null
+
+  return createPortal(children, document.body)
+}
 
 interface Attachment {
   id: string
@@ -262,79 +277,81 @@ export default function PhotosPage() {
         </div>
       </section>
 
-      {isModalOpen && currentAttachment && (
-        <div
-          className={`${styles.mediaModal} ${isModalOpen ? styles.active : ""}`}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              closeModal()
-            }
-          }}
-        >
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>{currentAttachment.filename}</h3>
-              <div className={styles.modalActions}>
-                <button
-                  className={`${styles.modalBtn} ${styles.downloadBtn}`}
-                  onClick={handleDownload}
-                  disabled={downloadState.isDownloading}
-                >
-                  {downloadState.text}
-                </button>
-                <button className={`${styles.modalBtn} ${styles.closeBtn}`} onClick={closeModal}>
-                  ✕ 닫기
-                </button>
+      <ModalPortal isOpen={isModalOpen}>
+        {currentAttachment && (
+          <div
+            className={styles.mediaModal}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeModal()
+              }
+            }}
+          >
+            <div className={styles.modalContent}>
+              <div className={styles.modalHeader}>
+                <h3 className={styles.modalTitle}>{currentAttachment.filename}</h3>
+                <div className={styles.modalActions}>
+                  <button
+                    className={`${styles.modalBtn} ${styles.downloadBtn}`}
+                    onClick={handleDownload}
+                    disabled={downloadState.isDownloading}
+                  >
+                    {downloadState.text}
+                  </button>
+                  <button className={`${styles.modalBtn} ${styles.closeBtn}`} onClick={closeModal}>
+                    ✕ 닫기
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className={styles.modalMediaContainer}>
-              {currentAttachment.type.startsWith("video/") ? (
-                <video
-                  src={currentAttachment.url}
-                  controls
-                  autoPlay={false}
-                  preload="metadata"
-                  onError={() => {
-                    console.error("비디오 로드 실패")
-                  }}
-                />
-              ) : (
-                <img
-                  src={currentAttachment.url || "/placeholder.svg"}
-                  alt={currentAttachment.filename}
-                  onError={() => {
-                    console.error("이미지 로드 실패")
-                  }}
-                />
-              )}
-            </div>
+              <div className={styles.modalMediaContainer}>
+                {currentAttachment.type.startsWith("video/") ? (
+                  <video
+                    src={currentAttachment.url}
+                    controls
+                    autoPlay={false}
+                    preload="metadata"
+                    onError={() => {
+                      console.error("비디오 로드 실패")
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={currentAttachment.url || "/placeholder.svg"}
+                    alt={currentAttachment.filename}
+                    onError={() => {
+                      console.error("이미지 로드 실패")
+                    }}
+                  />
+                )}
+              </div>
 
-            <div className={styles.modalInfo}>
-              <div className={styles.modalInfoGrid}>
-                <div className={styles.modalInfoItem}>
-                  <div className={styles.modalInfoLabel}>파일명</div>
-                  <div className={styles.modalInfoValue}>{currentAttachment.filename}</div>
-                </div>
-                <div className={styles.modalInfoItem}>
-                  <div className={styles.modalInfoLabel}>타입</div>
-                  <div className={styles.modalInfoValue}>
-                    {currentAttachment.type.startsWith("video/") ? "영상" : "사진"}
+              <div className={styles.modalInfo}>
+                <div className={styles.modalInfoGrid}>
+                  <div className={styles.modalInfoItem}>
+                    <div className={styles.modalInfoLabel}>파일명</div>
+                    <div className={styles.modalInfoValue}>{currentAttachment.filename}</div>
                   </div>
-                </div>
-                <div className={styles.modalInfoItem}>
-                  <div className={styles.modalInfoLabel}>크기</div>
-                  <div className={styles.modalInfoValue}>{formatFileSize(currentAttachment.size)}</div>
-                </div>
-                <div className={styles.modalInfoItem}>
-                  <div className={styles.modalInfoLabel}>업로드 날짜</div>
-                  <div className={styles.modalInfoValue}>{formatDate(currentAttachment.uploadedAt)}</div>
+                  <div className={styles.modalInfoItem}>
+                    <div className={styles.modalInfoLabel}>타입</div>
+                    <div className={styles.modalInfoValue}>
+                      {currentAttachment.type.startsWith("video/") ? "영상" : "사진"}
+                    </div>
+                  </div>
+                  <div className={styles.modalInfoItem}>
+                    <div className={styles.modalInfoLabel}>크기</div>
+                    <div className={styles.modalInfoValue}>{formatFileSize(currentAttachment.size)}</div>
+                  </div>
+                  <div className={styles.modalInfoItem}>
+                    <div className={styles.modalInfoLabel}>업로드 날짜</div>
+                    <div className={styles.modalInfoValue}>{formatDate(currentAttachment.uploadedAt)}</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalPortal>
     </main>
   )
 }

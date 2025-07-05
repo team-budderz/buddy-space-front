@@ -1,6 +1,28 @@
 "use client"
 
 import { useEffect, useState, type FormEvent } from "react"
+import { createPortal } from "react-dom"
+import { format } from 'date-fns'
+
+interface ModalPortalProps {
+  children: React.ReactNode;
+  isOpen: boolean;
+}
+
+// ModalPortal 컴포넌트 추가
+const ModalPortal: React.FC<ModalPortalProps> = ({ children, isOpen }) => {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  if (!mounted || !isOpen) return null
+
+  return createPortal(children, document.body)
+}
+
 import { useParams } from "next/navigation"
 import { useGroupPermissions } from "../layout"
 import api from "@/app/api"
@@ -17,43 +39,108 @@ function isWithinPeriod(start: string, end: string): boolean {
   return s <= today && today <= e
 }
 
-
 interface Mission {
   missionId: number
   title: string
   description: string
   startedAt: string
   endedAt: string
+  frequency: number
+  progressDay: number
   authorName: string
-  authorId: number
+  authorId: number; 
 }
 
-interface MissionDetail extends Mission {
+interface MissionDetail {
+  id: number 
+  title: string
+  description: string
+  startedAt: string
+  endedAt: string
   frequency: number
-  createdAt: string
+  authorName: string
+  authorImageUrl: string
+  createdAt: string 
 }
 
 interface MissionPost {
-  postId: number
+  missionPostId: number
   missionId: number
   contents: string
-  authorName?: string
-  authorId?: number
-  createdAt?: string
+  authorId: number
+  authorName: string
+  createdAt: string
+  missionTitle: string
 }
 
-async function getAuthHeaders() {
-  const token = localStorage.getItem("accessToken");
-  if (!token) throw new Error("토큰이 없습니다. 로그인해주세요.");
+interface MissionPostDetail {
+  missionPostId: number
+  missionId: number
+  contents: string
+  missionTitle: string
+  authorName: string
+  authorImageUrl: string
+  createdAt: string
+}
+
+
+async function getAuthHeaders(): Promise<{ Authorization: string; "Content-Type": string }> {
+  const token = await getValidToken()
+  if (!token) throw new Error("토큰이 없습니다. 로그인해주세요.")
   return {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
-  };
+  }
+}
+
+const getAuthToken = () => {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem("accessToken") || localStorage.getItem("token")
+}
+
+const isTokenValid = (token: string) => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]))
+    const currentTime = Math.floor(Date.now() / 1000)
+    return payload.exp > currentTime
+  } catch (error) {
+    console.error("토큰 디코딩 실패:", error)
+    return false
+  }
+}
+
+const getValidToken = async (): Promise<string | null> => {
+  const token = getAuthToken()
+  if (!token) return null
+
+  if (!isTokenValid(token)) {
+    try {
+      const email = localStorage.getItem("userEmail")
+      const password = localStorage.getItem("userPassword")
+
+      if (!email || !password) return null
+
+      const res = await api.post("/token/refresh", { email, password })
+      const newToken = res.data.result?.accessToken
+
+      if (newToken) {
+        localStorage.setItem("accessToken", newToken)
+        return newToken
+      } else {
+        return null
+      }
+    } catch (err) {
+      console.error("토큰 재발급 실패:", err)
+      return null
+    }
+  }
+
+  return token
 }
 
 export default function MissionsPage() {
   const { id: groupId } = useParams()
-  const { getCurrentUserId, getCurrentUserRole, isSubLeaderOrAbove, isMemberOrAbove } = useGroupPermissions()
+  const { getCurrentUserId, getCurrentUserRole, isSubLeaderOrAbove, isMemberOrAbove, hasPermission } = useGroupPermissions()
   const [tab, setTab] = useState<"missions" | "posts">("missions")
 
   const [missions, setMissions] = useState<Mission[]>([])
@@ -72,12 +159,28 @@ export default function MissionsPage() {
   const [editingPost, setEditingPost] = useState<MissionPost | null>(null)
 
   const [detailMission, setDetailMission] = useState<MissionDetail | null>(null)
-  const [detailPost, setDetailPost] = useState<MissionPost | null>(null)
+  const [detailPost, setDetailPost] = useState<MissionPostDetail | null>(null)
   const [postModal, setPostModal] = useState(false)
 
   const currentUserId = getCurrentUserId()
   const currentUserRole = getCurrentUserRole()
-  const [missionForPost, setMissionForPost] = useState<number | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null) 
+  const [missionForPost, setMissionForPost] = useState<number | null>(null)
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const res = await api.get("/users/me")
+        if (res.data.result && res.data.result.name) {
+          setCurrentUserName(res.data.result.name)
+          console.log("[DEBUG] currentUserName 설정됨:", res.data.result.name)
+        }
+      } catch (error) {
+        console.error("Failed to fetch current user name:", error)
+      }
+    }
+    fetchUserName()
+  }, [])
 
   useEffect(() => {
     if (groupId) {
@@ -85,42 +188,39 @@ export default function MissionsPage() {
     }
   }, [groupId])
 
-  // 권한 체크 함수들
+  // 권한 체크 
+  const canCreateMission = (): boolean => {
+    return hasPermission("CREATE_MISSION")
+  }
+
   const canEditMission = (mission: Mission): boolean => {
-    if (!currentUserId) return false
-    // 작성자이거나 부리더 이상인 경우
-    return mission.authorId === currentUserId || isSubLeaderOrAbove()
+    if (!currentUserName) return false
+    return mission.authorName === currentUserName
   }
 
   const canDeleteMission = (mission: Mission): boolean => {
-    if (!currentUserId) return false
-    // 작성자이거나 부리더 이상인 경우
-    return mission.authorId === currentUserId || isSubLeaderOrAbove()
-  }
-
-  const canEditPost = (post: MissionPost): boolean => {
-    if (!currentUserId) return false
-    // 작성자이거나 부리더 이상인 경우
-    return post.authorId === currentUserId || isSubLeaderOrAbove()
-  }
-
-  const canDeletePost = (post: MissionPost): boolean => {
-    if (!currentUserId) return false
-    // 작성자이거나 부리더 이상인 경우
-    return post.authorId === currentUserId || isSubLeaderOrAbove()
-  }
-
-  const canCreateMission = (): boolean => {
-    return isMemberOrAbove()
+    if (!currentUserName) return false
+    return mission.authorName === currentUserName || hasPermission("DELETE_MISSION")
   }
 
   const canCreatePost = (): boolean => {
     return isMemberOrAbove()
   }
 
+  const canEditPost = (post: MissionPost): boolean => {
+    if (!currentUserName) return false
+    return post.authorName === currentUserName
+  }
+
+  const canDeletePost = (post: MissionPost): boolean => {
+    if (!currentUserName) return false
+    return post.authorName === currentUserName
+  }
+
   async function loadMissions() {
     try {
-      const response = await api.get(`/groups/${groupId}/missions`)
+      const headers = await getAuthHeaders()
+      const response = await api.get(`/groups/${groupId}/missions`, { headers })
       if (response.status === 200 && response.data.result) {
         setMissions(response.data.result || [])
       }
@@ -131,29 +231,30 @@ export default function MissionsPage() {
   }
 
   function cancelMissionModal() {
-    setShowMissionModal(false);
-    setEditingMissionId(null);
+    setShowMissionModal(false)
+    setEditingMissionId(null)
   }
 
   function cancelPostModal() {
-    setPostModal(false);
-    setEditingPost(null);
-    setMissionForPost(null);
+    setPostModal(false)
+    setEditingPost(null)
+    setMissionForPost(null)
   }
 
   async function loadMissionDetail(missionId: number) {
     try {
-      const response = await api.get(`/groups/${groupId}/missions/${missionId}`);
+      const headers = await getAuthHeaders()
+      const response = await api.get(`/groups/${groupId}/missions/${missionId}`, { headers })
       if (response.status === 200 && response.data.result) {
-        setDetailMission(response.data.result); const detail = response.data.result;
+        const detail = response.data.result
         setDetailMission({
           ...detail,
-          missionId: detail.missionId ?? detail.id,
-        });
+          missionId: detail.id,
+        })
       }
     } catch (err) {
-      console.error("Failed to load mission detail", err);
-      alert("미션 상세 정보를 불러오는데 실패했습니다.");
+      console.error("Failed to load mission detail", err)
+      alert("미션 상세 정보를 불러오는데 실패했습니다.")
     }
   }
 
@@ -163,20 +264,29 @@ export default function MissionsPage() {
 
   async function loadAllPosts() {
     try {
+      const headers = await getAuthHeaders()
       const all: MissionPost[] = []
       for (const m of missions) {
-        const response = await api.get(`/groups/${groupId}/missions/${m.missionId}/posts`)
+        const response = await api.get(`/groups/${groupId}/missions/${m.missionId}/posts`, { headers })
         if (response.status === 200 && response.data.result) {
+          console.log("[DEBUG] loadAllPosts - 백엔드 응답 (raw):", response.data.result)
           const postsWithMissionId = response.data.result.map((p: any) => ({
-            ...p,
-            missionId: m.missionId,
+            missionPostId: p.missionPostId,
+            contents: p.contents,
+            authorId: p.authorId, 
+            authorName: p.authorName, 
+            missionId: m.missionId, 
+            createdAt: p.createdAt,
+            missionTitle: m.title,
           }))
           all.push(...postsWithMissionId)
         }
       }
+      console.log("[DEBUG] loadAllPosts - 필터링 전 모든 인증 게시물:", all)
       setPosts(all)
     } catch (err) {
       console.error("Failed to load posts", err)
+      alert("인증 목록을 불러오는데 실패했습니다.")
     }
   }
 
@@ -194,9 +304,10 @@ export default function MissionsPage() {
     e.preventDefault()
 
     try {
-      // 수정 모드
+      const headers = await getAuthHeaders()
+
       if (editingMissionId) {
-        const mission = missions.find(m => m.missionId === editingMissionId)!
+        const mission = missions.find((m) => m.missionId === editingMissionId)!
         if (!canEditMission(mission)) {
           alert("수정 권한이 없습니다.")
           return
@@ -207,16 +318,15 @@ export default function MissionsPage() {
           {
             title: missionForm.title,
             description: missionForm.description,
-            frequency: missionForm.frequency,
-          }
+          },
+          { headers },
         )
-      }
-      // 생성 모드
-      else {
+      } else {
         if (!canCreateMission()) {
           alert("미션 생성 권한이 없습니다.")
           return
         }
+
         await api.post(
           `/groups/${groupId}/missions`,
           {
@@ -225,7 +335,8 @@ export default function MissionsPage() {
             startedAt: missionForm.startedAt,
             endedAt: missionForm.endedAt,
             frequency: missionForm.frequency,
-          }
+          },
+          { headers },
         )
       }
 
@@ -239,7 +350,6 @@ export default function MissionsPage() {
       alert("미션 저장에 실패했습니다.")
     }
   }
-
 
   function startEditMission(m: Mission) {
     if (!canEditMission(m)) {
@@ -267,7 +377,8 @@ export default function MissionsPage() {
     if (!confirm("삭제하시겠습니까?")) return
 
     try {
-      await api.delete(`/groups/${groupId}/missions/${mission.missionId}`)
+      const headers = await getAuthHeaders()
+      await api.delete(`/groups/${groupId}/missions/${mission.missionId}`, { headers })
       loadMissions()
       alert("미션이 삭제되었습니다.")
     } catch (err) {
@@ -292,64 +403,62 @@ export default function MissionsPage() {
     setPostModal(true)
   }
 
-  useEffect(() => {
-    console.log("📌 missionForPost changed:", missionForPost);
-  }, [missionForPost]);
-
-
   async function handlePostSubmit(e: FormEvent) {
-    e.preventDefault();
+    e.preventDefault()
 
-    const headers = await getAuthHeaders();
+    try {
+      const headers = await getAuthHeaders()
 
-    // ✅ 수정 모드
-    if (editingPost) {
-      if (!canEditPost(editingPost)) {
-        alert("수정 권한이 없습니다.");
-        return;
+      if (editingPost) {
+        if (!canEditPost(editingPost)) {
+          alert("수정 권한이 없습니다.")
+          return
+        }
+
+        const response = await api.patch(
+          `/groups/${groupId}/missions/${(editingPost as any).missionId}/posts/${editingPost.missionPostId}`,
+          { contents: postForm.contents },
+          { headers },
+        )
+
+        if (response.status === 200) {
+          alert("인증이 수정되었습니다.")
+          setPostForm({ contents: "" })
+          setEditingPost(null)
+          setPostModal(false)
+          await loadAllPosts()
+        }
+        return
       }
 
-      const res = await api.patch(
-        `/groups/${groupId}/missions/${editingPost.missionId}/posts/${editingPost.postId}`,
+      const missionId = missionForPost
+      if (!missionId) {
+        alert("미션을 먼저 선택해주세요.")
+        return
+      }
+
+      if (!canCreatePost()) {
+        alert("인증 생성 권한이 없습니다.")
+        return
+      }
+
+      const response = await api.post(
+        `/groups/${groupId}/missions/${missionForPost}/posts`,
         { contents: postForm.contents },
-        { headers, withCredentials: true }
-      );
+        { headers },
+      )
 
-      if (res.status === 200) {
-        alert("인증이 수정되었습니다.");
-        setPostForm({ contents: "" });
-        setEditingPost(null);
-        setPostModal(false);
-        await loadAllPosts();
+      if (response.status === 200) {
+        alert("인증이 등록되었습니다.")
+        setPostForm({ contents: "" })
+        setPostModal(false)
+        await loadAllPosts()
       }
-      return;
-    }
-
-    const missionId = missionForPost
-    if (!missionId) {
-      alert("미션을 먼저 선택해주세요.");
-      return;
-    }
-
-    if (!canCreatePost()) {
-      alert("인증 생성 권한이 없습니다.");
-      return;
-    }
-
-    const res = await api.post(
-      `/groups/${groupId}/missions/${missionForPost}/posts`,
-      { contents: postForm.contents },
-      { headers, withCredentials: true }
-    );
-
-    if (res.status === 200) {
-      alert("인증이 등록되었습니다.");
-      setPostForm({ contents: "" });
-      setPostModal(false);
-      await loadAllPosts();
+    } catch (err) {
+      console.error("Failed to save post", err)
+      alert("인증 저장에 실패했습니다.")
     }
   }
-
 
   async function deletePost(p: MissionPost) {
     if (!canDeletePost(p)) {
@@ -360,12 +469,35 @@ export default function MissionsPage() {
     if (!confirm("삭제하시겠습니까?")) return
 
     try {
-      await api.delete(`/groups/${groupId}/missions/${p.missionId}/posts/${p.postId}`)
+      const headers = await getAuthHeaders()
+      await api.delete(`/groups/${groupId}/missions/${(p as any).missionId}/posts/${p.missionPostId}`, { headers })
       loadAllPosts()
       alert("인증이 삭제되었습니다.")
     } catch (err) {
       console.error("Failed to delete post", err)
       alert("삭제에 실패했습니다.")
+    }
+  }
+
+  async function loadPostDetail(missionId: number, postId: number) {
+    try {
+      const headers = await getAuthHeaders()
+      const response = await api.get(`/groups/${groupId}/missions/${missionId}/posts/${postId}`, { headers })
+      if (response.status === 200 && response.data.result) {
+        const dto = response.data.result
+        setDetailPost({
+          missionPostId: postId,      
+          missionId: missionId,      
+          contents: dto.contents,
+          missionTitle: dto.missionTitle,
+          authorName: dto.authorName,
+          authorImageUrl: dto.authorImageUrl,
+          createdAt: dto.createdAt,
+        })
+      }
+    } catch (err) {
+      console.error("Failed to load post detail", err)
+      alert("인증 상세 정보를 불러오는데 실패했습니다.")
     }
   }
 
@@ -409,8 +541,9 @@ export default function MissionsPage() {
                   >
                     <div>{m.title}</div>
                     <div className={styles.listMeta}>
-                      {m.startedAt} ~ {m.endedAt} | 작성자: {m.authorName}
+                      {m.startedAt} ~ {m.endedAt} | 진행일: {m.progressDay}일
                     </div>
+                    <div className={styles.listAuthor}>작성자: {m.authorName}</div>
                   </div>
                   <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
                     {canEditMission(m) && (
@@ -453,19 +586,19 @@ export default function MissionsPage() {
           ) : (
             <ul className={styles.list}>
               {posts.map((p) => (
-                <li key={p.postId} className={styles.listItem}>
+                <li key={p.missionPostId} className={styles.listItem}>
                   <div
                     className={styles.listTitle}
                     onClick={(e) => {
                       e.stopPropagation()
-                      setDetailPost(p)
+                      loadPostDetail((p as any).missionId, p.missionPostId)
                     }}
                   >
-                    <div>{missions.find((m) => m.missionId === p.missionId)?.title}</div>
+                    <div>{p.missionTitle}</div>
                     <div className={styles.listMeta}>
-                      {p.contents.substring(0, 50)}
-                      {p.contents.length > 50 ? "..." : ""} | 작성자: {p.authorName}
+                      {p.createdAt ? format(new Date(p.createdAt), 'yyyy.MM.dd') : ''}
                     </div>
+                    
                   </div>
                   <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
                     {canEditPost(p) && (
@@ -498,7 +631,7 @@ export default function MissionsPage() {
         </>
       )}
 
-      {showMissionModal && (
+      <ModalPortal isOpen={showMissionModal}>
         <div className={styles.modalOverlay} onClick={() => setShowMissionModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>{editingMissionId ? "미션 수정" : "새 미션 추가"}</h2>
@@ -544,11 +677,7 @@ export default function MissionsPage() {
                 </>
               )}
               <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.cancelButton}
-                  onClick={cancelMissionModal}
-                >
+                <button type="button" className={styles.cancelButton} onClick={cancelMissionModal}>
                   취소
                 </button>
                 <button type="submit" className={styles.submitButton}>
@@ -558,83 +687,147 @@ export default function MissionsPage() {
             </form>
           </div>
         </div>
-      )}
+      </ModalPortal>
 
-      {detailMission && (
-        <div className={styles.modalOverlay} onClick={() => setDetailMission(null)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>{detailMission.title}</h2>
-            <div className={styles.detailContent}>
-              <div className={styles.detailMeta}>
-                <span className={styles.detailTag}>작성자: {detailMission.authorName}</span>
-                <span className={styles.detailTag}>
-                  기간: {detailMission.startedAt} ~ {detailMission.endedAt}
-                </span>
+      <ModalPortal isOpen={!!detailMission}>
+        {detailMission && (
+          <div className={styles.modalOverlay} onClick={() => setDetailMission(null)}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.detailHeader}>
+              <div className={styles.authorInfo}>
+                <img
+                  src={detailMission.authorImageUrl || "/placeholder.svg"}
+                  alt="avatar"
+                  className={styles.avatar}
+                />
+                <div>
+                  <div className={styles.authorName}>{detailMission.authorName}</div>
+                  <div className={styles.postDate}>
+                    {format(new Date(detailMission.createdAt), 'yyyy년 MM월 dd일')}
+                  </div>
+                </div>
               </div>
-              <div className={styles.detailDescription}>{detailMission.description}</div>
             </div>
-            <div className={styles.modalActions}>
-              <button
-                className={styles.cancelButton}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setDetailMission(null)
-                }}
-              >
-                닫기
-              </button>
-              {detailMission && isWithinPeriod(detailMission.startedAt, detailMission.endedAt) ? (
+
+            <div className={styles.detailBody}>
+              <h3>기간 </h3>
+              <div className={styles.detailDates}>
+                {detailMission.startedAt} ~ {detailMission.endedAt}
+              </div>
+              <h3 className={styles.detailTitle}>미션 : {detailMission.title}</h3>
+              <div className={styles.detailContent}>{detailMission.description}</div>
+            </div>
+              <div className={styles.modalActions}>
                 <button
-                  className={styles.submitButton}
-                  onClick={e => {
+                  className={styles.cancelButton}
+                  onClick={(e) => {
                     e.stopPropagation()
-                    setMissionForPost(detailMission.missionId)
-                    setPostModal(true)
+                    setDetailMission(null)
                   }}
                 >
-                  미션하기
+                  닫기
                 </button>
-              ) : (
-                <button
-                  className={`${styles.submitButton} ${styles.disabled}`}
-                  onClick={e => {
-                    e.stopPropagation()
-                    alert(`${detailMission.startedAt} 이후에 미션을 수행할 수 있습니다.`)
-                  }}
-                >
-                  미션하기
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {detailPost && (
-        <div className={styles.modalOverlay} onClick={() => setDetailPost(null)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>인증 상세</h3>
-            <div className={styles.detailContent}>
-              <div className={styles.detailMeta}>
-                <span className={styles.detailTag}>작성자: {detailPost.authorName}</span>
-                <span className={styles.detailTag}>작성일: {detailPost.createdAt}</span>
+                {detailMission && isWithinPeriod(detailMission.startedAt, detailMission.endedAt) ? (
+                  <button
+                    className={styles.submitButton}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setMissionForPost(detailMission.id) 
+                      setPostModal(true)
+                    }}
+                  >
+                    미션하기
+                  </button>
+                ) : (
+                  <button
+                    className={`${styles.submitButton} ${styles.disabled}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      alert(`${detailMission.startedAt} 이후에 미션을 수행할 수 있습니다.`)
+                    }}
+                  >
+                    미션하기
+                  </button>
+                )}
               </div>
-              <div className={styles.detailDescription}>{detailPost.contents}</div>
-            </div>
-            <div className={styles.modalActions}>
-              <button className={styles.cancelButton} onClick={() => setDetailPost(null)}>
-                닫기
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalPortal>
 
-      {(postModal || editingPost) && (
-        <div
-          className={styles.modalOverlay}
-          onClick={cancelPostModal}
-        >
+      <ModalPortal isOpen={!!detailPost}>
+        {detailPost && (
+          <div className={styles.modalOverlay} onClick={() => setDetailPost(null)}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.detailHeader}>
+              <div className={styles.authorInfo}>
+                <img
+                  src={detailPost.authorImageUrl || "/placeholder.svg"}
+                  alt="avatar"
+                  className={styles.avatar}
+                />
+                <div>
+                  <div className={styles.authorName}>{detailPost.authorName}</div>
+                  <div className={styles.postDate}>
+                    {format(new Date(detailPost.createdAt), 'yyyy년 MM월 dd일')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.detailBody}>
+              <h3 className={styles.detailTitle}>인증 내용</h3>
+              <div className={styles.detailContent}>{detailPost.contents}</div>
+            </div>
+              <div className={styles.modalActions}>
+                <button className={styles.cancelButton} onClick={() => setDetailPost(null)}>
+                  닫기
+                </button>
+                {detailPost.authorName === currentUserName && (
+                  <>
+                    {(() => {
+                      const post: MissionPost = {
+                        missionPostId: detailPost.missionPostId,
+                        missionId: detailPost.missionId,
+                        contents: detailPost.contents,
+                        authorId: currentUserId!,
+                        authorName: detailPost.authorName,
+                        createdAt: detailPost.createdAt,
+                        missionTitle: detailPost.missionTitle,
+                      }
+                      return (
+                        <>
+                          <button
+                            className={styles.submitButton}
+                            onClick={() => {
+                              setDetailPost(null)
+                              startEditPost(post)
+                            }}
+                          >
+                            수정
+                          </button>
+                          <button
+                            className={`${styles.submitButton} ${styles.dangerButton}`}
+                            onClick={() => {
+                              setDetailPost(null)
+                              deletePost(post)
+                            }}
+                          >
+                            삭제
+                          </button>
+                        </>
+                      )
+                    })()}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </ModalPortal>
+
+      <ModalPortal isOpen={postModal || !!editingPost}>
+        <div className={styles.modalOverlay} onClick={cancelPostModal}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>{editingPost ? "인증 수정" : "인증 등록"}</h3>
             <form onSubmit={handlePostSubmit} className={styles.form}>
@@ -648,11 +841,7 @@ export default function MissionsPage() {
                 />
               </div>
               <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.cancelButton}
-                  onClick={cancelPostModal}
-                >
+                <button type="button" className={styles.cancelButton} onClick={cancelPostModal}>
                   취소
                 </button>
                 <button type="submit" className={styles.submitButton}>
@@ -662,7 +851,7 @@ export default function MissionsPage() {
             </form>
           </div>
         </div>
-      )}
+      </ModalPortal>
     </div>
   )
 }

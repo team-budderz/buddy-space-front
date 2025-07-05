@@ -78,7 +78,8 @@ export default function PostDetailPage() {
   const postId = postid
   const router = useRouter()
 
-  const { isLoading: permissionsLoading, isMemberOrAbove } = useGroupPermissions()
+  // 권한 설정 추가
+  const { isLoading: permissionsLoading, isMemberOrAbove, hasPermission } = useGroupPermissions()
 
   useEffect(() => {
     loadCurrentUser()
@@ -123,9 +124,11 @@ export default function PostDetailPage() {
 
   const loadReplies = async (commentId: number) => {
     try {
-      const response = await api.get(`/groups/${groupId}/posts/${postId}/comments/${commentId}`, {
-        withCredentials: true,
-      })
+      const headers = await getAuthHeaders()
+      const response = await api.get(
+        `/groups/${groupId}/posts/${postId}/comments/${commentId}`,
+        { headers }
+      )
       const repliesData = response.data.result || []
 
       // 중첩 댓글 구조 생성
@@ -149,7 +152,6 @@ export default function PostDetailPage() {
       replyMap.set(reply.id, { ...reply, nestedReplies: [] })
     })
 
-    // 부모-자식 관계 설정
     repliesData.forEach((reply) => {
       const replyObj = replyMap.get(reply.id)!
 
@@ -230,6 +232,7 @@ export default function PostDetailPage() {
     }
   }
 
+
   const handleEditComment = async (commentId: number) => {
     if (!editCommentContent.trim()) return
 
@@ -279,10 +282,12 @@ export default function PostDetailPage() {
     if (!replyContent?.trim()) return
 
     try {
-      await api.post(`/groups/${groupId}/posts/${postId}/comments/${commentId}`, {
-        content: replyContent,
-      })
-
+      const headers = await getAuthHeaders()
+      await api.post(
+        `/groups/${groupId}/posts/${postId}/comments/${commentId}`,
+        { content: replyContent },
+        { headers }
+      )
       setReplyInputs((prev) => ({ ...prev, [commentId]: "" }))
       await loadReplies(commentId)
       await loadPost()
@@ -298,10 +303,12 @@ export default function PostDetailPage() {
     if (!replyContent?.trim()) return
 
     try {
-      await api.post(`/groups/${groupId}/posts/${postId}/comments/${commentId}`, {
-        content: replyContent,
-        parentReplyId: parentReplyId,
-      })
+      const headers = await getAuthHeaders()
+      await api.post(
+        `/groups/${groupId}/posts/${postId}/comments/${commentId}`,
+        { content: replyContent, parentReplyId },
+        { headers }
+      )
 
       setNestedReplyInputs((prev) => ({ ...prev, [replyKey]: "" }))
       setShowReplyForm((prev) => ({ ...prev, [replyKey]: false }))
@@ -312,6 +319,7 @@ export default function PostDetailPage() {
       alert("댓글 작성 중 오류가 발생했습니다.")
     }
   }
+
 
   const toggleReplies = async (commentId: number) => {
     if (expandedReplies.has(commentId)) {
@@ -337,11 +345,14 @@ export default function PostDetailPage() {
   }
 
   const canEditThisPost = () => {
-    return post && currentUser && post.userId === currentUser.id
+    return post !== null && currentUser !== null && post.userId === currentUser.id
   }
 
   const canDeleteThisPost = () => {
-    return post && currentUser && post.userId === currentUser.id
+    return (
+      (post !== null && currentUser !== null && post.userId === currentUser.id) ||
+      hasPermission("DELETE_POST")
+    )
   }
 
   const canEditComment = (comment: Comment) => {
@@ -379,8 +390,8 @@ export default function PostDetailPage() {
 
     return (
       <div className={styles.nestedRepliesContainer}>
-        {nestedReplies.map((nestedReply) => (
-          <div key={nestedReply.id}>
+        {nestedReplies.map((nestedReply, index) => (
+          <div key={`${commentId}-${nestedReply.id || index}`}>
             <div className={styles.nestedReplyItem}>
               <img
                 src={nestedReply.userImgUrl || "/placeholder.svg?height=24&width=24"}
@@ -406,11 +417,7 @@ export default function PostDetailPage() {
 
             {showReplyForm[`${commentId}-${nestedReply.id}`] && isMemberOrAbove() && (
               <div className={styles.replyForm}>
-                <img
-                  src={currentUser?.imageUrl || "/placeholder.svg?height=28&width=28"}
-                  alt="내 프로필"
-                  className={styles.replyAvatar}
-                />
+               
                 <div className={styles.replyInputGroup}>
                   <textarea
                     value={nestedReplyInputs[`${commentId}-${nestedReply.id}`] || ""}
@@ -464,27 +471,23 @@ export default function PostDetailPage() {
         <div className={styles.postDetailHeader}>
           <div className={styles.headerTop}>
             <button onClick={() => router.back()} className={styles.backButton}>
-              <span className={styles.buttonIcon}>←</span>
-              뒤로가기
+              <span className={styles.buttonIcon}>←</span> 뒤로가기
             </button>
-
             {(canEditThisPost() || canDeleteThisPost()) && (
               <div className={styles.postMenuContainer}>
-                <button onClick={togglePostMenu} className={styles.menuButton}>
+                <button onClick={() => setShowPostMenu(!showPostMenu)} className={styles.menuButton}>
                   <span className={styles.buttonIcon}>⋮</span>
                 </button>
                 {showPostMenu && (
                   <div className={styles.dropdownMenu}>
                     {canEditThisPost() && (
                       <button onClick={handleEditPost} className={styles.menuItem}>
-                        <span className={styles.menuIcon}>✏️</span>
-                        수정하기
+                        <span className={styles.menuIcon}>✏️</span> 수정하기
                       </button>
                     )}
                     {canDeleteThisPost() && (
                       <button onClick={handleDeletePost} className={`${styles.menuItem} ${styles.deleteMenuItem}`}>
-                        <span className={styles.menuIcon}>🗑️</span>
-                        삭제하기
+                        <span className={styles.menuIcon}>🗑️</span> 삭제하기
                       </button>
                     )}
                   </div>
@@ -495,7 +498,7 @@ export default function PostDetailPage() {
 
           <div className={styles.postAuthorInfo}>
             <img
-              src={post.userImgUrl || "/placeholder.svg?height=40&width=40"}
+              src={post.userImgUrl || "/placeholder.svg?height=48&width=48"}
               alt={post.userName}
               className={styles.postAuthor}
             />
@@ -526,11 +529,7 @@ export default function PostDetailPage() {
         <div className={styles.commentContent}>
           {isMemberOrAbove() && (
             <div className={styles.commentForm}>
-              <img
-                src={currentUser?.imageUrl || "/placeholder.svg?height=36&width=36"}
-                alt="내 프로필"
-                className={styles.commentAvatar}
-              />
+              
               <div className={styles.commentInputGroup}>
                 <textarea
                   value={newComment}
@@ -556,7 +555,7 @@ export default function PostDetailPage() {
               <div key={comment.commentId} className={styles.commentItem}>
                 <div className={styles.commentMain}>
                   <img
-                    src={comment.userImgUrl || "/placeholder.svg?height=36&width=36"}
+                    src={comment.userImgUrl || "/placeholder.svg?height=44&width=44"}
                     alt={comment.userName}
                     className={styles.commentAvatar}
                   />
@@ -618,7 +617,44 @@ export default function PostDetailPage() {
                     ) : (
                       <div className={styles.commentText}>{comment.content}</div>
                     )}
+                    {isMemberOrAbove() && (
+                      <>
+                        <button
+                          className={styles.replyToReplyButton}
+                          onClick={() => toggleNestedReplyForm(comment.commentId, 0)}  // parentReplyId 0 → 댓글에 바로 다는 대댓글
+                        >
+                          답글 달기
+                        </button>
 
+                        {showReplyForm[`${comment.commentId}-0`] && (
+                          <div className={styles.replyForm}>
+                            
+                            <div className={styles.replyInputGroup}>
+                              <textarea
+                                value={nestedReplyInputs[`${comment.commentId}-0`] || ""}
+                                onChange={(e) =>
+                                  setNestedReplyInputs((prev) => ({
+                                    ...prev,
+                                    [`${comment.commentId}-0`]: e.target.value,
+                                  }))
+                                }
+                                placeholder="답글을 입력하세요..."
+                                className={styles.replyInput}
+                                rows={2}
+                              />
+                              <button
+                                onClick={() => handleSubmitNestedReply(comment.commentId, 0)}
+                                disabled={!nestedReplyInputs[`${comment.commentId}-0`]?.trim()}
+                                className={styles.replySubmitButton}
+                              >
+                                <span className={styles.buttonIcon}>💬</span>
+                                답글
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                     {comment.commentNum > 0 && (
                       <button onClick={() => toggleReplies(comment.commentId)} className={styles.replyToggleButton}>
                         {expandedReplies.has(comment.commentId) ? "접기" : `댓글 ${comment.commentNum}개`}
@@ -629,11 +665,11 @@ export default function PostDetailPage() {
 
                 {expandedReplies.has(comment.commentId) && (
                   <div className={styles.repliesContainer}>
-                    {replies[comment.commentId]?.map((reply) => (
-                      <div key={reply.id}>
+                    {replies[comment.commentId]?.map((reply, index) => (
+                      <div key={`${comment.commentId}-${reply.id || index}`}>
                         <div className={styles.replyItem}>
                           <img
-                            src={reply.userImgUrl || "/placeholder.svg?height=28&width=28"}
+                            src={reply.userImgUrl || "/placeholder.svg?height=32&width=32"}
                             alt={reply.userName}
                             className={styles.replyAvatar}
                           />
@@ -654,14 +690,9 @@ export default function PostDetailPage() {
                           </div>
                         </div>
 
-                        {/* 중첩 댓글 작성 폼 */}
                         {showReplyForm[`${comment.commentId}-${reply.id}`] && isMemberOrAbove() && (
                           <div className={styles.replyForm}>
-                            <img
-                              src={currentUser?.imageUrl || "/placeholder.svg?height=28&width=28"}
-                              alt="내 프로필"
-                              className={styles.replyAvatar}
-                            />
+                          
                             <div className={styles.replyInputGroup}>
                               <textarea
                                 value={nestedReplyInputs[`${comment.commentId}-${reply.id}`] || ""}
@@ -687,18 +718,13 @@ export default function PostDetailPage() {
                           </div>
                         )}
 
-                        {/* 중첩 댓글 렌더링 */}
                         {reply.nestedReplies && renderNestedReplies(reply.nestedReplies, comment.commentId, 0)}
                       </div>
                     ))}
 
                     {isMemberOrAbove() && (
                       <div className={styles.replyForm}>
-                        <img
-                          src={currentUser?.imageUrl || "/placeholder.svg?height=28&width=28"}
-                          alt="내 프로필"
-                          className={styles.replyAvatar}
-                        />
+            
                         <div className={styles.replyInputGroup}>
                           <textarea
                             value={replyInputs[comment.commentId] || ""}

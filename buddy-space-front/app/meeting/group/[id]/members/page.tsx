@@ -6,6 +6,21 @@ import { useGroupPermissions } from "../layout"
 import styles from "./members.module.css"
 import axios from "axios"
 import api from "@/app/api"
+import { createPortal } from "react-dom"
+
+// ModalPortal 컴포넌트 추가
+function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  if (!mounted || !isOpen) return null
+
+  return createPortal(children, document.body)
+}
 
 interface Member {
   id: number
@@ -54,6 +69,27 @@ export default function MembersPage() {
   const [isCreatingInvite, setIsCreatingInvite] = useState(false)
 
   const { isLoading: permissionsLoading, isLeader, hasPermission } = useGroupPermissions()
+
+  const fetchChatRooms = async () => {
+    const headers = await getAuthHeaders()
+    const res = await api.get(`/group/${groupId}/chat/rooms/my`, { headers })
+    return res.data.result as any[]
+  }
+
+  const findGroupRoomId = (rooms: any[]) => {
+    const groupRoom = rooms.find(r => r.roomType === "GROUP")
+    return groupRoom?.roomId as number | undefined
+  }
+
+  const leaveChatRoom = async (roomId: number) => {
+    const headers = await getAuthHeaders()
+    await api.delete(`/group/${groupId}/chat/rooms/${roomId}/participants/me`, { headers })
+  }
+
+  const removeChatParticipant = async (roomId: number, userId: number) => {
+    const headers = await getAuthHeaders()
+    await api.delete(`/group/${groupId}/chat/rooms/${roomId}/participants/${userId}`, { headers })
+  }
 
   const getValidToken = async (): Promise<string | null> => {
     const token = getAuthToken()
@@ -212,9 +248,18 @@ export default function MembersPage() {
 
     try {
       const headers = await getAuthHeaders()
+      // 모임 강제 탈퇴
       await api.delete(`/groups/${groupId}/members/${memberId}/expel`, { headers })
       showToast(`${memberName}님이 모임에서 탈퇴되었습니다.`)
       closeModal()
+
+      // 채팅방에서도 강퇴 처리
+      const rooms = await fetchChatRooms()
+      const groupRoomId = findGroupRoomId(rooms)
+      if (groupRoomId) {
+        await removeChatParticipant(groupRoomId, memberId)
+      }
+
       await loadMembersData()
     } catch (error: any) {
       console.error("강제 탈퇴 실패:", error)
@@ -227,9 +272,18 @@ export default function MembersPage() {
 
     try {
       const headers = await getAuthHeaders()
+      // 모임 차단
       await api.patch(`/groups/${groupId}/members/${memberId}/block`, {}, { headers })
       showToast(`${memberName}님이 차단되었습니다.`)
       closeModal()
+
+      // 채팅방에서도 강퇴 처리
+      const rooms = await fetchChatRooms()
+      const groupRoomId = findGroupRoomId(rooms)
+      if (groupRoomId) {
+        await removeChatParticipant(groupRoomId, memberId)
+      }
+
       await loadMembersData()
     } catch (error: any) {
       console.error("차단 실패:", error)
@@ -237,10 +291,14 @@ export default function MembersPage() {
     }
   }
 
+
   const startDirectChat = async (memberId: number, memberName: string) => {
     try {
-      const token = localStorage.getItem("accessToken")
-      if (!token) throw new Error("토큰 없음")
+      const token = await getValidToken()
+      if (!token) {
+        alert("로그인이 필요합니다.")
+        return
+      }
 
       const headers = {
         Authorization: `Bearer ${token}`,
@@ -252,6 +310,24 @@ export default function MembersPage() {
         return
       }
 
+      // 현재 그룹 내 채팅방 목록 조회
+      const roomsRes = await api.get(`/group/${groupId}/chat/rooms/my`, { headers })
+      const chatRooms = roomsRes.data.result
+
+      // 동일한 사람과 1:1 채팅방이 이미 있는지 확인
+      const alreadyExists = chatRooms.some((room: any) => {
+        if (room.roomType !== "DIRECT") return false
+        const participantIds = room.participants.map((p: any) => p.id).sort()
+        const targetIds = [currentUser.id, memberId].sort()
+        return JSON.stringify(participantIds) === JSON.stringify(targetIds)
+      })
+
+      if (alreadyExists) {
+        alert(`${memberName}님과의 1:1 채팅방은 이미 존재합니다.`)
+        return
+      }
+
+      // 존재하지 않으면 새 채팅방 생성
       const response = await axios.post(
         `http://localhost:8080/api/group/${groupId}/chat/rooms`,
         {
@@ -260,12 +336,15 @@ export default function MembersPage() {
           chatRoomType: "DIRECT",
           participantIds: [currentUser.id, memberId],
         },
-        { headers },
+        {
+          headers,
+          withCredentials: true,
+        }
       )
 
       const roomId = response.data.result.roomId
 
-      // 채팅창을 바로 열기 위해 이벤트 발생
+      // 생성된 채팅방 열기
       window.dispatchEvent(
         new CustomEvent("openDirectChat", {
           detail: {
@@ -274,38 +353,21 @@ export default function MembersPage() {
             roomType: "DIRECT",
             groupId: Number(groupId),
           },
-        }),
+        })
       )
 
       closeModal()
     } catch (err: any) {
-      if (err.response?.status === 409) {
-        const existingRoomId = err.response?.data?.result?.roomId
-        if (existingRoomId) {
-          console.warn("이미 존재하는 1:1 채팅방으로 이동합니다.")
-
-          // 기존 채팅창 열기
-          window.dispatchEvent(
-            new CustomEvent("openDirectChat", {
-              detail: {
-                roomId: existingRoomId,
-                roomName: `${selectedMember?.name}과의 채팅`,
-                roomType: "DIRECT",
-                groupId: Number(groupId),
-              },
-            }),
-          )
-
-          closeModal()
-        } else {
-          alert("이미 존재하는 채팅방이 있습니다. 목록에서 확인해주세요.")
-        }
-      } else {
-        console.error("1:1 채팅방 생성 실패", err)
-        alert("1:1 채팅방 생성 실패")
+      if (err?.response?.status === 409) {
+        return
       }
+
+      console.error("1:1 채팅방 열기 실패", err)
+      alert("1:1 채팅방 열기 실패")
     }
   }
+
+
 
   const handleAuthError = () => {
     showToast("인증이 만료되었습니다. 다시 로그인해주세요.", "error")
@@ -389,17 +451,23 @@ export default function MembersPage() {
   }
 
   const withdrawFromGroup = async () => {
-    if (
-      !confirm(
-        "정말로 이 모임에서 탈퇴하시겠습니까?\n탈퇴 후에는 다시 가입 요청을 하거나, \n비공개 모임일 경우 초대 링크로만 참여할 수 있습니다.",
-      )
-    )
-      return
+    if (!confirm(
+      "정말로 이 모임에서 탈퇴하시겠습니까?\n탈퇴 후에는 다시 가입 요청을 하거나, \n비공개 모임일 경우 초대 링크로만 참여할 수 있습니다.",
+    )) return
 
     try {
       const headers = await getAuthHeaders()
+      // 모임 탈퇴
       await api.delete(`/groups/${groupId}/withdraw`, { headers })
       showToast("모임에서 탈퇴되었습니다.")
+
+      // 채팅방에서도 나가기 처리
+      const rooms = await fetchChatRooms()
+      const groupRoomId = findGroupRoomId(rooms)
+      if (groupRoomId) {
+        await leaveChatRoom(groupRoomId)
+      }
+
       setTimeout(() => router.push("/meeting"), 1500)
     } catch (error: any) {
       console.error("모임 탈퇴 실패:", error)
@@ -544,64 +612,66 @@ export default function MembersPage() {
       )}
 
       {/* 초대 모달 */}
-      {showInviteModal && inviteData && (
-        <div className={styles.modal} onClick={closeModal}>
-          <div className={`${styles.modalContent} ${styles.inviteModalContent}`} onClick={(e) => e.stopPropagation()}>
-            <span className={styles.close} onClick={closeModal}>
-              &times;
-            </span>
-            <h3>{inviteData.groupName} 초대</h3>
+      <ModalPortal isOpen={showInviteModal}>
+        {inviteData && (
+          <div className={styles.modal} onClick={closeModal}>
+            <div className={`${styles.modalContent} ${styles.inviteModalContent}`} onClick={(e) => e.stopPropagation()}>
+              <span className={styles.close} onClick={closeModal}>
+                &times;
+              </span>
+              <h3>{inviteData.groupName} 초대</h3>
 
-            <div className={styles.inviteInfo}>
-              <p className={styles.inviteDescription}>{inviteData.groupDescription || "새로운 친구를 초대해보세요!"}</p>
+              <div className={styles.inviteInfo}>
+                <p className={styles.inviteDescription}>{inviteData.groupDescription || "새로운 친구를 초대해보세요!"}</p>
 
-              {inviteData.inviteLink ? (
-                <>
-                  <div className={styles.inviteLinkContainer}>
-                    <label>초대 링크</label>
-                    <div className={styles.linkInputGroup}>
-                      <input type="text" value={inviteData.inviteLink} readOnly />
-                      <button
-                        className={styles.copyBtn}
-                        onClick={() => copyToClipboard(inviteData.inviteLink!, "초대 링크")}
-                      >
-                        복사
-                      </button>
-                    </div>
-                  </div>
-
-                  {inviteData.code && (
-                    <div className={styles.inviteCodeContainer}>
-                      <label>초대 코드</label>
-                      <div className={styles.codeInputGroup}>
-                        <input type="text" value={inviteData.code} readOnly />
+                {inviteData.inviteLink ? (
+                  <>
+                    <div className={styles.inviteLinkContainer}>
+                      <label>초대 링크</label>
+                      <div className={styles.linkInputGroup}>
+                        <input type="text" value={inviteData.inviteLink} readOnly />
                         <button
                           className={styles.copyBtn}
-                          onClick={() => copyToClipboard(inviteData.code!, "초대 코드")}
+                          onClick={() => copyToClipboard(inviteData.inviteLink!, "초대 링크")}
                         >
                           복사
                         </button>
                       </div>
                     </div>
-                  )}
 
+                    {inviteData.code && (
+                      <div className={styles.inviteCodeContainer}>
+                        <label>초대 코드</label>
+                        <div className={styles.codeInputGroup}>
+                          <input type="text" value={inviteData.code} readOnly />
+                          <button
+                            className={styles.copyBtn}
+                            onClick={() => copyToClipboard(inviteData.code!, "초대 코드")}
+                          >
+                            복사
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={styles.inviteActions}>
+                      <button className={styles.refreshBtn} onClick={refreshInviteLink} disabled={isCreatingInvite}>
+                        {isCreatingInvite ? "생성 중..." : "새 링크 생성"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
                   <div className={styles.inviteActions}>
-                    <button className={styles.refreshBtn} onClick={refreshInviteLink} disabled={isCreatingInvite}>
-                      {isCreatingInvite ? "생성 중..." : "새 링크 생성"}
+                    <button className={styles.createBtn} onClick={createInviteLink} disabled={isCreatingInvite}>
+                      {isCreatingInvite ? "생성 중..." : "초대 링크 만들기"}
                     </button>
                   </div>
-                </>
-              ) : (
-                <div className={styles.inviteActions}>
-                  <button className={styles.createBtn} onClick={createInviteLink} disabled={isCreatingInvite}>
-                    {isCreatingInvite ? "생성 중..." : "초대 링크 만들기"}
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalPortal>
 
       {/* 토스트 메시지 */}
       {toast.show && <div className={`${styles.toast} ${styles.show} ${styles[toast.type]}`}>{toast.message}</div>}

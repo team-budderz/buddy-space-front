@@ -156,6 +156,12 @@
   margin-top: 4px;
 }
 
+.listAuthor {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
 .itemActions {
   display: flex;
   gap: 8px;
@@ -324,6 +330,17 @@
   box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
 }
 
+.submitButton.disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.submitButton.disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .cancelButton {
   background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
   color: #ffffff;
@@ -335,29 +352,68 @@
   box-shadow: 0 8px 24px rgba(107, 114, 128, 0.4);
 }
 
-.detailContent {
+.detailHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.authorInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #f3f4f6;
+  background: #f9fafb;
+}
+
+.authorName {
+  font-weight: 700;
+  font-size: 16px;
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.postDate {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.detailBody {
   padding: 0;
 }
 
-.detailMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.detailTag {
+.detailDates {
   display: inline-block;
   font-size: 13px;
   color: #6b7280;
   font-weight: 600;
+  margin-bottom: 16px;
   padding: 6px 12px;
   background: #f3f4f6;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
 }
 
-.detailDescription {
+.detailTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.detailContent {
   font-size: 15px;
   color: #374151;
   line-height: 1.6;
@@ -366,7 +422,7 @@
   padding: 20px;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
-  margin-bottom: 20px;
+  min-height: 120px;
 }
 
 .emptyState {
@@ -385,4 +441,11 @@
 .emptyState p {
   font-size: 14px;
   margin: 0;
+}
+
+.missionTitle {
+  margin: 0 0 16px;      
+  font-size: 1.5rem;      
+  font-weight: 700;       
+  color: #333;            
 }

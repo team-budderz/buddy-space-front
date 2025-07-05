@@ -169,7 +169,7 @@ export default function CreatePostPage() {
 
       await api.delete('/attachments', {
         headers,
-        data: [fileId],  
+        data: [fileId],
       })
 
       setAttachedFiles(prev => prev.filter(f => f.id !== fileId))
@@ -207,7 +207,7 @@ export default function CreatePostPage() {
     try {
       setIsSubmitting(true)
       const cleaned = content.replace(/<button[^>]*>.*?<\/button>/g, '')
-      const postData = { content: cleaned, isNotice: false, reserveAt: null }
+      const postData = { content: cleaned, isNotice: isNotice, reserveAt: null }
       const headers = await getAuthHeaders()
       const res = await api.post(`/groups/${groupId}/posts`, postData, { headers })
       const postId = res.data.result.postId
@@ -235,7 +235,7 @@ export default function CreatePostPage() {
       }
     }
 
-    router.back()
+    router.push(`/meeting/group/${groupId}/posts`)
   }
 
   const formatFileSize = (bytes: number) => {

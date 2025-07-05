@@ -199,6 +199,7 @@ export default function MeetingPage() {
 
     return (
         <main className={styles.mainContainer}>
+            <div className={styles.contentWrapper}>
 
             <div className={styles.tabsContainer}>
                 <div className={styles.tabs}>
@@ -272,6 +273,7 @@ export default function MeetingPage() {
                     groups.map((group) => <GroupCard key={group.groupId} group={group} />)
                 )}
             </div>
+        </div>
         </main>
     )
 }

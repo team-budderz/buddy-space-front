@@ -4,41 +4,55 @@ import type React from "react"
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import api from "@/app/api"
-import ChatWindow from "./chat/chat-window"
+import { useChatDropdown } from "./chat/useChatDropdown"
 import styles from "./navbar.module.css"
+import ChatWindow from "./chat/chat-window"
 
-interface ChatRoom {
+
+export interface ChatRoom {
   roomId: number
   roomName: string
   roomType: "GROUP" | "DIRECT"
-  lastMessage?: string
-  lastMessageTime?: string
-  unreadCount: number
   groupId?: number
-  otherUser?: {
-    userId: number
-    userName: string
-    profileImageUrl?: string
-  }
 }
 
+
 interface Notification {
+  notificationId: number
   content: string
   groupName: string
   createdAt: string
+  isRead: boolean
+  url: string
 }
 
 export default function NavBar() {
   const [userInfo, setUserInfo] = useState<{ id: number; profileImageUrl?: string;[key: string]: any } | null>(null)
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notificationCount, setNotificationCount] = useState(0)
-  const [isLoadingChats, setIsLoadingChats] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
-  const [openChatWindows, setOpenChatWindows] = useState<Set<number>>(new Set())
-  const [activeChatWindow, setActiveChatWindow] = useState<ChatRoom | null>(null)
+
+  const [currentPage, setCurrentPage] = useState(0)
+  const [lastPage, setLastPage] = useState(false)
+  const [sseEventSource, setSseEventSource] = useState<EventSource | null>(null)
+
+  const notificationDropdownRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const router = useRouter()
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([])
+  const [activeChatWindow, setActiveChatWindow] = useState<ChatRoom | null>(null)
+  const [isLoadingChats, setIsLoadingChats] = useState(true)
+
+  const closeChatWindow = (roomId: number) => {
+    if (activeChatWindow?.roomId === roomId) {
+      setActiveChatWindow(null)
+    }
+  }
+  const handleChatRoomClick = (room: ChatRoom) => {
+    setActiveChatWindow(room)
+  }
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const redirectToLogin = () => {
@@ -47,8 +61,40 @@ export default function NavBar() {
 
   const logoutUser = () => {
     localStorage.removeItem("accessToken")
+    if (sseEventSource) {
+        sseEventSource.close();
+    }
     router.push("/login")
   }
+
+  useEffect(() => {
+    if (!localStorage.getItem("accessToken")) {
+      redirectToLogin()
+      return
+    }
+
+    const fetchUser = async () => {
+      try {
+        const res = await api.get("/users/me", { withCredentials: true })
+        setUserInfo(res.data.result)
+      } catch (err: any) {
+        console.error("유저 정보 오류:", err)
+        redirectToLogin()
+      }
+    }
+
+    fetchUser()
+    loadAllChatRooms()
+    connectNotificationSSE();
+
+
+    return () => {
+        if (sseEventSource) {
+            sseEventSource.close();
+        }
+    }
+  }, [])
+
 
   const handleSearch = () => {
     const keyword = searchInputRef.current?.value.trim()
@@ -68,97 +114,153 @@ export default function NavBar() {
     }
   }
 
-
-  const loadChatRooms = async () => {
-    setIsLoadingChats(true);
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        console.error("토큰이 없습니다.");
-        redirectToLogin();  // 토큰이 없으면 로그인 페이지로 이동
-        return;
-      }
-
-      const response = await fetch(`http://localhost:8080/api/chat/rooms/my`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`, // 토큰을 Authorization 헤더에 포함
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // 세션 쿠키를 포함할 경우 필요
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.result) {
-          setChatRooms(data.result);  // 채팅방 목록 업데이트
-        }
-      } else if (response.status === 401) {
-        console.error("인증 오류: 로그인이 필요합니다.");
-        redirectToLogin();  // 인증 실패시 로그인 페이지로 리디렉션
-      } else {
-        console.error("채팅방 목록 로드 실패:", response.status, response.statusText);
-      }
-    } catch (error) {
-      console.error("채팅방 목록 로드 실패:", error);
-    } finally {
-      setIsLoadingChats(false);
-    }
-  };
-
-  const loadNotifications = async () => {
-    setIsLoadingNotifications(true)
+  const loadAllChatRooms = async () => {
+    setIsLoadingChats(true)
     try {
       const token = localStorage.getItem("accessToken")
-      if (!token) return
+      if (!token) throw new Error("토큰이 없습니다. 로그인해주세요.")
 
-      const [notificationsRes, countRes] = await Promise.all([
-        fetch(`http://localhost:8080/api/notifications`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }),
-        fetch(`http://localhost:8080/api/notifications/notice-count`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }),
-      ])
-
-      if (notificationsRes.ok) {
-        const notificationsData = await notificationsRes.json()
-        setNotifications(notificationsData.result?.content || [])
-      }
-
-      if (countRes.ok) {
-        const countData = await countRes.json()
-        setNotificationCount(countData.result || 0)
-      }
-    } catch (error) {
-      console.error("알림 로드 실패:", error)
-    } finally {
-      setIsLoadingNotifications(false)
-    }
-  }
-
-  const handleChatRoomClick = (room: ChatRoom) => {
-    setActiveChatWindow(room)
-    setOpenChatWindows((prev) => new Set(prev).add(room.roomId))
-  }
-
-  const closeChatWindow = (roomId?: number) => {
-    if (roomId) {
-      setOpenChatWindows((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(roomId)
-        return newSet
+      const groupsRes = await fetch("http://localhost:8080/api/groups/my", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       })
+
+      const groupsData = await groupsRes.json()
+      const groups = Array.isArray(groupsData.result?.content)
+        ? groupsData.result.content
+        : []
+
+      const allRooms: ChatRoom[] = []
+
+      for (const group of groups) {
+        const groupId = group.groupId || group.id
+        const groupName = group.name || group.groupName
+        if (!groupId) continue
+
+        const chatRes = await fetch(`http://localhost:8080/api/group/${groupId}/chat/rooms/my`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        if (chatRes.ok) {
+          const chatData = await chatRes.json() // ✅ 여기서 chatData 선언
+          if (Array.isArray(chatData.result)) {
+            const roomsWithGroupId = chatData.result.map((room: any) => ({
+              roomId: room.roomId,
+              roomName: room.name,           // ✅ name → roomName
+              roomType: room.chatRoomType,   // ✅ chatRoomType → roomType
+              groupId,
+              groupName,
+            }))
+            allRooms.push(...roomsWithGroupId)
+          }
+        }
+      }
+
+      setChatRooms(allRooms)
+    } catch (err) {
+      console.error("채팅방 로드 실패:", err)
+    } finally {
+      setIsLoadingChats(false)
     }
-    setActiveChatWindow(null)
   }
 
+  const connectNotificationSSE = () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+
+    if (sseEventSource) {
+        sseEventSource.close();
+    }
+
+    let clientId = localStorage.getItem('clientId');
+    if (!clientId) {
+        clientId = crypto.randomUUID();
+        localStorage.setItem('clientId', clientId);
+    }
+
+    const newEventSource = new EventSource(`http://localhost:8080/api/notifications/subscribe?clientId=${clientId}`, {
+        withCredentials: true
+    });
+
+    newEventSource.addEventListener("connect", (event) => {
+        console.log("SSE 연결 성공:", event.data);
+    });
+
+    newEventSource.addEventListener("notification", async (event) => {
+        const notification = JSON.parse(event.data);
+        console.log("새 알림 도착:", notification);
+        await loadInitialNotifications();
+    });
+
+    newEventSource.onerror = (event) => {
+        console.error("SSE 연결 오류 또는 종료", event);
+        newEventSource.close();
+        setTimeout(connectNotificationSSE, 5000);
+    };
+
+    setSseEventSource(newEventSource);
+  }
+
+  const fetchNotifications = async (page = 0) => {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return { content: [], last: true, number: 0 };
+      try {
+          const response = await api.get(`/notifications?page=${page}`, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          return response.data.result;
+      } catch (error) {
+          console.error("알림 목록 요청 중 오류:", error);
+          return { content: [], last: true, number: 0 };
+      }
+  };
+
+  const loadInitialNotifications = async () => {
+      setIsLoadingNotifications(true);
+      const data = await fetchNotifications(0);
+      setNotifications(data.content);
+      setLastPage(data.last);
+      setCurrentPage(data.number + 1);
+      const unreadCount = data.content.filter((n: Notification) => !n.isRead).length;
+      setNotificationCount(unreadCount);
+      setIsLoadingNotifications(false);
+  };
+
+  const loadMoreNotifications = async () => {
+      if (lastPage || isLoadingNotifications) return;
+      setIsLoadingNotifications(true);
+      const data = await fetchNotifications(currentPage);
+      setNotifications(prev => [...prev, ...data.content]);
+      setLastPage(data.last);
+      setCurrentPage(data.number + 1);
+      setIsLoadingNotifications(false);
+  };
+
+  useEffect(() => {
+      const observer = new IntersectionObserver(
+          entries => {
+              if (entries[0].isIntersecting) {
+                  loadMoreNotifications();
+              }
+          },
+          { threshold: 1 }
+      );
+
+      if (sentinelRef.current) {
+          observer.observe(sentinelRef.current);
+      }
+
+      return () => {
+          if (sentinelRef.current) {
+              observer.unobserve(sentinelRef.current);
+          }
+      };
+  }, [sentinelRef, loadMoreNotifications]);
 
 
   const formatNotificationTime = (dateString: string) => {
@@ -177,31 +279,34 @@ export default function NavBar() {
     }
   }
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await api.get("/users/me", { withCredentials: true })
-        setUserInfo(res.data.result)
-      } catch (err: any) {
-        console.error("유저 정보 오류:", err)
-        redirectToLogin()
+  const convertApiUrlToPageUrl = (apiUrl: string) => {
+    const postMatch = apiUrl.match(/^\/api\/groups\/(\d+)\/posts\/(\d+)$/);
+    if (postMatch) {
+        const groupId = postMatch[1];
+        const postId = postMatch[2];
+        return `/meeting/group/${groupId}/post/${postId}`;
+    }
+    return apiUrl;
+  }
+
+  const handleNotificationClick = async (notification: Notification) => {
+      const { notificationId, url, isRead } = notification;
+      if (!isRead) {
+          try {
+              await api.patch(`/notifications/${notificationId}/read`, {}, {
+                  headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+              });
+              setNotifications(prev =>
+                  prev.map(n => (n.notificationId === notificationId ? { ...n, isRead: true } : n))
+              );
+              setNotificationCount(prev => (prev > 0 ? prev - 1 : 0));
+          } catch (error) {
+              console.error("알림 읽음 처리 실패:", error);
+          }
       }
-    }
-
-    if (!localStorage.getItem("accessToken")) {
-      redirectToLogin()
-      return
-    }
-
-    fetchUser()
-
-    // 주기적으로 알림 확인
-    const notificationInterval = setInterval(loadNotifications, 30000) // 30초마다
-
-    return () => {
-      clearInterval(notificationInterval)
-    }
-  }, [])
+      const pageUrl = convertApiUrlToPageUrl(url);
+      router.push(pageUrl);
+  };
 
   return (
     <>
@@ -236,21 +341,20 @@ export default function NavBar() {
             icon="https://raw.githubusercontent.com/withong/my-storage/main/budderz/free-icon-notification-bell-8377307.png"
             alt="알림"
             badge={notificationCount}
-            onOpen={loadNotifications}
+            onOpen={loadInitialNotifications}
             content={
-              <div className={styles.notificationDropdown}>
+              <div className={styles.notificationDropdown} ref={notificationDropdownRef}>
                 <div className={styles.notificationHeader}>
                   <h3>알림</h3>
-                  {notificationCount > 0 && <span className={styles.notificationCount}>{notificationCount}개</span>}
                 </div>
-                {isLoadingNotifications ? (
+                {isLoadingNotifications && notifications.length === 0 ? (
                   <div className={styles.loadingMessage}>알림을 불러오는 중...</div>
                 ) : notifications.length === 0 ? (
                   <div className={styles.emptyMessage}>알림이 없습니다</div>
                 ) : (
                   <div className={styles.notificationList}>
-                    {notifications.map((notification, index) => (
-                      <div key={index} className={styles.notificationItem}>
+                    {notifications.map((notification) => (
+                      <div key={notification.notificationId} className={`${styles.notificationItem} ${notification.isRead ? '' : styles.unread}`} onClick={() => handleNotificationClick(notification)}>
                         <div className={styles.notificationContent}>
                           <div className={styles.notificationText}>{notification.content}</div>
                           <div className={styles.notificationMeta}>
@@ -262,6 +366,7 @@ export default function NavBar() {
                         </div>
                       </div>
                     ))}
+                    <div ref={sentinelRef} style={{ height: "1px" }} />
                   </div>
                 )}
               </div>
@@ -272,13 +377,13 @@ export default function NavBar() {
             <Dropdown
               icon="https://raw.githubusercontent.com/withong/my-storage/main/budderz/free-icon-conversation-5323491.png"
               alt="채팅"
-              badge={chatRooms.reduce((sum, room) => sum + (room.unreadCount || 0), 0)}  // 총 알림 수 표시
-              onOpen={loadChatRooms}
+              badge={0}
               content={
                 <div className={styles.chatDropdown}>
                   <div className={styles.chatHeader}>
                     <h3>채팅</h3>
                   </div>
+
                   {isLoadingChats ? (
                     <div className={styles.loadingMessage}>채팅방을 불러오는 중...</div>
                   ) : chatRooms.length === 0 ? (
@@ -286,22 +391,19 @@ export default function NavBar() {
                   ) : (
                     <div className={styles.chatList}>
                       {chatRooms.map((room) => (
-                        <div key={room.roomId} className={styles.chatItem} onClick={() => handleChatRoomClick(room)}>
+                        <div
+                          key={room.roomId}
+                          className={styles.chatItem}
+                          onClick={() => handleChatRoomClick(room)}
+                        >
                           <div className={styles.chatItemContent}>
                             <div className={styles.chatItemHeader}>
                               <span className={styles.chatRoomName}>
-                                {room.roomType === "GROUP"
-                                  ? `🏠 ${room.roomName}`
-                                  : `💬 ${room.otherUser?.userName || room.roomName}`}
+                                {`${room.roomType === "GROUP" ? "🏠" : "💬"
+                                  } ${room.roomName}`}
                               </span>
-                              {room.unreadCount > 0 && <span className={styles.unreadBadge}>{room.unreadCount}</span>}
+
                             </div>
-                            {room.lastMessage && (
-                              <div className={styles.lastMessage}>
-                                <span className={styles.messageText}>{room.lastMessage}</span>
-                                <span className={styles.messageTime}>{room.lastMessageTime}</span>
-                              </div>
-                            )}
                           </div>
                         </div>
                       ))}
@@ -311,6 +413,7 @@ export default function NavBar() {
               }
             />
           </div>
+
 
           <Dropdown
             icon={
@@ -344,6 +447,12 @@ export default function NavBar() {
           onClose={() => closeChatWindow(activeChatWindow.roomId)}
         />
       )}
+      {activeChatWindow && !activeChatWindow.groupId && (
+        <div className={styles.chatError}>
+          그룹 ID가 없어 채팅을 불러올 수 없습니다.
+        </div>
+      )}
+
     </>
   )
 }

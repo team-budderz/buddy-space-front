@@ -33,9 +33,19 @@ interface CurrentUser {
   imageUrl?: string
 }
 
+async function getAuthHeaders(): Promise<{ Authorization: string; "Content-Type": string }> {
+  const token = localStorage.getItem("accessToken")
+  if (!token) throw new Error("토큰이 없습니다. 로그인해주세요.")
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  }
+}
+
+
 export default function EditPostPage() {
   const [post, setPost] = useState<Post | null>(null)
-  const [content, setContent] = useState("")
+  const [content, setContent] = useState<string>("")
   const [isNotice, setIsNotice] = useState(false)
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -50,14 +60,17 @@ export default function EditPostPage() {
 
   const params = useParams()
   const router = useRouter()
-  const groupId = params.id as string
-  const postId = params.postId as string
+  const { id: groupId, postid } = useParams() as { id: string; postid: string }
+  const postId = postid
 
   const { isLoading: permissionsLoading, isLeader } = useGroupPermissions()
 
   useEffect(() => {
-    loadCurrentUser()
-    loadPost()
+    async function init() {
+      await loadCurrentUser()   // ① 유저 정보 먼저
+      await loadPost()          // ② 그다음 게시글 로드
+    }
+    init()
   }, [groupId, postId])
 
   useEffect(() => {
@@ -68,27 +81,28 @@ export default function EditPostPage() {
     }
   }, [post])
 
+
   const loadCurrentUser = async () => {
-    try {
-      const response = await api.get("/users/me")
-      setCurrentUser(response.data.result)
-    } catch (error) {
-      console.error("사용자 정보 로드 실패:", error)
-    }
+    const resp = await api.get("/users/me", { withCredentials: true })
+    setCurrentUser(resp.data.result)
   }
 
+  // loadPost: 권한 체크는 currentUser 가 null 이 아닐 때만 실행
   const loadPost = async () => {
+    setLoading(true)
     try {
-      setLoading(true)
-      const response = await api.get(`http://localhost:8080/api/groups/${groupId}/posts/${postId}`)
-      const postData = response.data.result
+      const headers = await getAuthHeaders()
+      const res = await api.get(
+        `/groups/${groupId}/posts/${postId}`,
+        { headers, withCredentials: true }
+      )
+      const postData = res.data.result
       setPost(postData)
 
-      // 권한 체크
-      if (!currentUser || (postData.userId !== currentUser.id && !isLeader())) {
+      // 여기서는 currentUser가 null이면 권한 체크를 잠시 건너뜀
+      if (currentUser && postData.userId !== currentUser.id && !isLeader()) {
         alert("게시글 수정 권한이 없습니다.")
         router.back()
-        return
       }
     } catch (error) {
       console.error("게시글 로드 실패:", error)
@@ -171,7 +185,9 @@ export default function EditPostPage() {
   }
 
   const handleSubmit = async () => {
-    if (!content.trim() && attachedFiles.length === 0) {
+    // 1) content 유효성 검사
+    const text = typeof content === "string" ? content.trim() : ""
+    if (!text && attachedFiles.length === 0) {
       alert("게시글 내용을 입력해주세요.")
       return
     }
@@ -179,24 +195,45 @@ export default function EditPostPage() {
     try {
       setIsSubmitting(true)
 
-      const cleanedContent = content.replace(/<button[^>]*class="delete-btn"[^>]*>.*?<\/button>/g, "")
+      // 2) 로컬스토리지에서 토큰 헤더 준비
+      const headers = await getAuthHeaders()
+      console.log("PATCH headers:", headers)
 
-      const postData = {
-        content: cleanedContent,
-        isNotice,
-      }
+      // 3) 불필요한 HTML(삭제 버튼) 제거
+      const cleanedContent = content.replace(
+        /<button[^>]*class="delete-btn"[^>]*>.*?<\/button>/g,
+        ""
+      )
 
-      await api.put(`http://localhost:8080/api/groups/${groupId}/posts/${postId}`, postData)
+      // 4) PATCH 요청으로 수정
+      await api.patch(
+        `/groups/${groupId}/posts/${postId}`,
+        { content: cleanedContent, isNotice },
+        { headers, withCredentials: true }
+      )
 
       alert("게시글이 수정되었습니다!")
       router.push(`/meeting/group/${groupId}/posts/${postId}`)
-    } catch (error) {
-      console.error("게시글 수정 실패:", error)
-      alert("게시글 수정 중 오류가 발생했습니다.")
+    } catch (err: any) {
+      console.error("게시글 수정 실패:", err)
+      if (err.response?.status === 401) {
+        alert("인증이 만료되었습니다. 다시 로그인해주세요.")
+        router.push("/login")
+      } else if (err.response?.status === 403) {
+        alert("수정 권한이 없습니다.")
+      } else {
+        alert("게시글 수정 중 오류가 발생했습니다.")
+      }
     } finally {
       setIsSubmitting(false)
     }
   }
+
+
+
+
+
+
 
   const handleCancel = () => {
     if (confirm("수정을 취소하시겠습니까?")) {

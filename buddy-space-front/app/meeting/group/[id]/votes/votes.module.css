@@ -493,7 +493,40 @@
 
 /* Detail Modal Styles */
 .detailHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.authorInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #f3f4f6;
+  background: #f9fafb;
+}
+
+.authorName {
+  font-weight: 700;
+  font-size: 16px;
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.postDate {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 .detailMeta {

@@ -104,6 +104,12 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
   }
 
   useEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual"
+    }
+  }, [])
+
+  useEffect(() => {
     initializePermissions()
   }, [groupId])
 

@@ -7,6 +7,19 @@ import { useGroupPermissions } from "../layout"
 import styles from "./setting.module.css"
 import api from "@/app/api"
 import { getAuthHeaders } from "@/app/api/auth"
+import { createPortal } from "react-dom"
+
+function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted || !isOpen) return null
+
+    return createPortal(children, document.body)
+}
 
 interface GroupData {
     id: number
@@ -40,7 +53,11 @@ interface ToastState {
     type: "success" | "error" | "warning" | "info"
 }
 
-// 권한 타입 정의
+interface ChatRoom {
+    roomId: number;
+    roomType: string;
+}
+
 type PermissionType =
     | "CREATE_POST"
     | "DELETE_POST"
@@ -54,6 +71,7 @@ type PermissionType =
     | "CREATE_INVITE_LINK"
     | "INVITE_CHAT_PARTICIPANT"
     | "KICK_CHAT_PARTICIPANT"
+
 
 
 export default function SettingPage() {
@@ -81,6 +99,27 @@ export default function SettingPage() {
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const { isLoading: permsLoading, isLeader, refreshPermissions } = useGroupPermissions()
+
+    // 채팅 동기화 
+    const fetchChatRooms = async (): Promise<ChatRoom[]> => {
+        const headers = await getAuthHeaders()
+        const res = await api.get(`/group/${groupId}/chat/rooms/my`, { headers })
+        return res.data.result ?? res.data.data
+    }
+
+    const findGroupRoomId = (rooms: ChatRoom[]): number | undefined => {
+        return rooms.find((r) => r.roomType === "GROUP")?.roomId
+    }
+
+    const removeChatParticipant = async (roomId: number, userId: number) => {
+        const headers = await getAuthHeaders()
+        await api.delete(`/group/${groupId}/chat/rooms/${roomId}/participants/${userId}`, { headers })
+    }
+
+    const leaveChatRoom = async (roomId: number) => {
+        const headers = await getAuthHeaders()
+        await api.delete(`/group/${groupId}/chat/rooms/${roomId}/participants/me`, { headers })
+    }
 
     useEffect(() => {
         initializeSettings()
@@ -143,7 +182,7 @@ export default function SettingPage() {
         return `${year}년 ${month}월 ${day}일 가입`
     }
 
-    // 기본 정보 관리 함수들
+    
     const openGroupInfoModal = () => {
         if (!currentGroupData) return
         setGroupName(currentGroupData.name || "")
@@ -355,53 +394,60 @@ export default function SettingPage() {
         }
     }
 
-    const handleNeighborhoodAuthToggle = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (isProcessing) return
 
-        const { checked } = event.target
-        setIsProcessing(true)
+    const handleNeighborhoodAuthToggle = async (
+        event: React.ChangeEvent<HTMLInputElement>
+    ) => {
+        if (isProcessing) return;
+
+        const { checked } = event.target;
+        setIsProcessing(true);
 
         try {
-            const headers = await getAuthHeaders()
-
             const res = await api.patch(
                 `/groups/${groupId}/neighborhood-auth-required`,
-                { required: checked },
-                { headers }
-            )
+                JSON.stringify(checked)
+            );
 
-            setCurrentGroupData(res.data.result)
-            showToast(`동네 인증 설정이 ${checked ? "활성화" : "비활성화"}되었습니다.`)
-        } catch (error: any) {
-            console.error("동네 인증 설정 변경 실패:", error)
-            const msg = error.response?.data?.message || "동네 인증 설정 변경 중 오류가 발생했습니다."
-            showToast(msg, "error")
-            // rollback UI
-            event.target.checked = !checked
+            setCurrentGroupData(res.data.result);
+            showToast(
+                `동네 인증 설정이 ${checked ? "활성화" : "비활성화"}되었습니다.`
+            );
+        } catch (err: any) {
+            console.error("동네 인증 설정 변경 실패:", err);
+            const msg =
+                err.response?.data?.message ||
+                "동네 인증 설정 변경 중 오류가 발생했습니다.";
+            showToast(msg, "error");
         } finally {
-            setIsProcessing(false)
+            setIsProcessing(false);
         }
-    }
+    };
 
+    // src/app/meeting/group/[id]/setting/page.tsx
 
     const updateGroupAddress = async () => {
         if (!confirm("내 위치 정보를 기반으로 벗터의 동네를 업데이트하시겠습니까?")) {
-            return
+            return;
         }
-        setIsLoading(true)
+        setIsLoading(true);
+
         try {
-            const headers = getAuthHeaders()
-            const res = await api.patch(`/groups/${groupId}/address`, {}, { headers })
-            setCurrentGroupData(res.data.result)
-            showToast("벗터 동네가 성공적으로 업데이트되었습니다.")
+            const res = await api.patch(`/groups/${groupId}/address`);
+            setCurrentGroupData(res.data.result);
+            showToast("벗터 동네가 성공적으로 업데이트되었습니다.");
         } catch (err: any) {
-            console.error("동네 업데이트 실패:", err)
-            const msg = err.response?.data?.message || "동네 업데이트 중 오류가 발생했습니다."
-            showToast(msg, "error")
+            console.error("동네 업데이트 실패:", err);
+            const msg =
+                err.response?.data?.message ||
+                "동네 업데이트 중 오류가 발생했습니다.";
+            showToast(msg, "error");
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
-    }
+    };
+
+
 
     // 권한 관리 함수들
     const openMemberRoleModal = async () => {
@@ -512,23 +558,38 @@ export default function SettingPage() {
 
     const approveMember = async (memberId: number) => {
         try {
-            setIsLoading(true)
-            const headers = getAuthHeaders()
-            const response = await api.patch(`/groups/${groupId}/members/${memberId}/approve`, {}, { headers })
-            if (response.status === 200) {
-                showToast("가입 요청이 승인되었습니다.")
-                closeModal()
-                setTimeout(() => openJoinRequestModal(), 500)
-            } else {
-                throw new Error(response.data?.message || "가입 승인 실패")
+            setIsLoading(true);
+            // 1️⃣ 가입 승인
+            await api.patch(`/groups/${groupId}/members/${memberId}/approve`);
+
+            // 2️⃣ 채팅방 목록 조회 (경로를 singular 'group' 으로!)
+            const roomsRes = await api.get(`/group/${groupId}/chat/rooms/my`);
+            const rooms = roomsRes.data.result ?? roomsRes.data.data;
+            if (!Array.isArray(rooms) || rooms.length === 0) {
+                throw new Error("초대할 채팅방을 찾을 수 없습니다.");
             }
+            const chatRoomId = rooms[0].roomId;
+
+            // 3️⃣ 해당 방에 사용자 초대
+            await api.post(
+                `/group/${groupId}/chat/rooms/${chatRoomId}/participants`,
+                { userId: memberId }
+            );
+
+            showToast("가입 요청이 승인되고, 채팅방에 초대되었습니다.");
+            closeModal();
+            setTimeout(() => openJoinRequestModal(), 500);
         } catch (error: any) {
-            console.error("가입 승인 실패:", error)
-            showToast(error.response?.data?.message || "가입 승인 중 오류가 발생했습니다.", "error")
+            console.error("가입 승인 또는 채팅방 초대 실패:", error);
+            showToast(
+                error.response?.data?.message || "가입 승인 중 오류가 발생했습니다.",
+                "error"
+            );
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
-    }
+    };
+
 
     const rejectMember = async (memberId: number) => {
         if (!confirm("이 가입 요청을 거절하시겠습니까?")) return
@@ -584,6 +645,11 @@ export default function SettingPage() {
             setIsLoading(true)
             const response = await api.delete(`/groups/${groupId}/members/${memberId}/expel`)
             if (response.status === 200) {
+                // 채팅방에서도 강퇴 처리
+                const rooms = await fetchChatRooms()
+                const chatRoomId = findGroupRoomId(rooms)
+                if (chatRoomId) await removeChatParticipant(chatRoomId, memberId)
+
                 showToast(`${memberName}님이 강제 탈퇴되었습니다.`)
                 closeModal()
                 setTimeout(() => openExpelMemberModal(), 500)
@@ -634,6 +700,11 @@ export default function SettingPage() {
             setIsLoading(true)
             const response = await api.patch(`/groups/${groupId}/members/${memberId}/block`)
             if (response.status === 200 && response.data.result) {
+                // 채팅방에서도 강퇴 처리
+                const rooms = await fetchChatRooms()
+                const chatRoomId = findGroupRoomId(rooms)
+                if (chatRoomId) await removeChatParticipant(chatRoomId, memberId)
+
                 showToast(`${memberName}님이 차단되었습니다.`)
                 closeModal()
                 setTimeout(() => openBlockMemberModal(), 500)
@@ -734,6 +805,11 @@ export default function SettingPage() {
         }
         setIsLoading(true)
         try {
+            // 채팅방 나가기 처리
+            const rooms = await fetchChatRooms()
+            const chatRoomId = findGroupRoomId(rooms)
+            if (chatRoomId) await leaveChatRoom(chatRoomId)
+
             await api.delete(`/groups/${groupId}`)
             showToast("벗터가 성공적으로 삭제되었습니다.")
             setTimeout(() => {
@@ -1455,6 +1531,7 @@ export default function SettingPage() {
                     {/* 오프라인 모임일 때만 표시 */}
                     {isOffline && (
                         <>
+                            {/* 동네 인증  */}
                             <div className={styles.settingsMenuItem}>
                                 <div className={styles.settingsMenuContent}>
                                     <span className={styles.settingsMenuIcon}>🏠</span>
@@ -1472,23 +1549,36 @@ export default function SettingPage() {
                                         onChange={handleNeighborhoodAuthToggle}
                                         disabled={isProcessing}
                                     />
-                                    <label htmlFor="neighborhood-auth-toggle" className={styles.settingsToggleLabel}></label>
+                                    <label
+                                        htmlFor="neighborhood-auth-toggle"
+                                        className={styles.settingsToggleLabel}
+                                    ></label>
                                 </div>
                             </div>
 
-                            <div className={styles.settingsMenuItem} onClick={updateGroupAddress}>
+                            {/* 동네 업데이트 + 현재 주소 표시 */}
+                            <div className={styles.settingsMenuItem}>
                                 <div className={styles.settingsMenuContent}>
                                     <span className={styles.settingsMenuIcon}>📍</span>
                                     <div className={styles.settingsMenuText}>
                                         <h4>벗터 동네 업데이트하기</h4>
                                         <p>내 위치 정보를 기반으로 벗터 동네를 설정합니다</p>
-                                        {currentGroupData.address && <p>현재: {currentGroupData.address}</p>}
+                                        {/* 주소가 없으면 기본 문구 */}
+                                        <p id="current-address">
+                                            {currentGroupData.address || "현재 동네 정보 없음"}
+                                        </p>
                                     </div>
                                 </div>
-                                <span className={styles.settingsMenuArrow}>›</span>
+                                <span
+                                    className={styles.settingsMenuArrow}
+                                    onClick={updateGroupAddress}
+                                >
+                                    ›
+                                </span>
                             </div>
                         </>
                     )}
+
                 </div>
             </div>
 
@@ -1588,7 +1678,7 @@ export default function SettingPage() {
             </div>
 
             {/* 그룹 정보 수정 모달 */}
-            {showGroupInfoModal && (
+            <ModalPortal isOpen={showGroupInfoModal}>
                 <div className={styles.settingsModal} onClick={(e) => e.target === e.currentTarget && closeModal()}>
                     <div className={styles.settingsModalContent}>
                         <div className={styles.settingsModalHeader}>
@@ -1659,10 +1749,10 @@ export default function SettingPage() {
                         </div>
                     </div>
                 </div>
-            )}
+            </ModalPortal>
 
             {/* 동적 모달 */}
-            {showDynamicModal && (
+            <ModalPortal isOpen={showDynamicModal}>
                 <div className={styles.settingsModal} onClick={(e) => e.target === e.currentTarget && closeModal()}>
                     <div className={styles.settingsModalContent}>
                         <div className={styles.settingsModalHeader}>
@@ -1675,7 +1765,7 @@ export default function SettingPage() {
                         <div className={styles.settingsModalFooter}>{renderDynamicModalFooter()}</div>
                     </div>
                 </div>
-            )}
+            </ModalPortal>
 
             {/* 로딩 오버레이 */}
             {isLoading && !currentGroupData && (
