@@ -200,7 +200,7 @@ export default function ProfilePage() {
             }),
           ],
           { type: "application/json" },
-        ),
+        )
       )
       if (imageAction === "change" && selectedFile) {
         formData.append("profileImage", selectedFile)
@@ -218,8 +218,16 @@ export default function ProfilePage() {
       await fetchUserInfo()
     } catch (error: any) {
       console.error("사용자 정보 업데이트 실패:", error)
+
+      const status = error.response?.status
       const errorMessage = error.response?.data?.message || "정보 업데이트에 실패했습니다."
-      showToast(errorMessage, "error")
+
+      // 401이어도 로그인 이동 없이 메시지만 표시
+      if (status === 401) {
+        showToast("비밀번호 인증이 필요합니다. 다시 시도해주세요.", "error")
+      } else {
+        showToast(errorMessage, "error")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -241,15 +249,22 @@ export default function ProfilePage() {
       await api.patch("/users/password", {
         password: newPassword,
       })
+
       showToast("비밀번호가 성공적으로 변경되었습니다.")
       setShowPasswordModal(false)
       setNewPassword("")
       setIsPasswordVerified(false)
-
     } catch (error: any) {
       console.error("비밀번호 변경 실패:", error)
+
+      const status = error.response?.status
       const errorMessage = error.response?.data?.message || "비밀번호 변경에 실패했습니다."
-      showToast(errorMessage, "error")
+
+      if (status === 401) {
+        showToast("비밀번호 인증이 필요합니다. 다시 시도해주세요.", "error")
+      } else {
+        showToast(errorMessage, "error")
+      }
     }
   }
 
