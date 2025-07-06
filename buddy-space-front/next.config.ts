@@ -6,23 +6,30 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  env: {
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    NEXT_PUBLIC_AUTH_BASE_URL: process.env.NEXT_PUBLIC_AUTH_BASE_URL,
+  },
   async rewrites() {
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL
+    const authBase = process.env.NEXT_PUBLIC_AUTH_BASE_URL
+
     return [
       {
         source: '/oauth2/authorization/:provider',
-        destination: 'http://localhost:8080/oauth2/authorization/:provider',
+        destination: `${authBase}/oauth2/authorization/:provider`,
       },
       {
         source: '/login/oauth2/code/:provider',
-        destination: 'http://localhost:8080/login/oauth2/code/:provider',
+        destination: `${authBase}/login/oauth2/code/:provider`,
       },
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8080/api/:path*',
+        destination: `${apiBase}/:path*`,
       },
     ]
   },
-  webpack(config: WebpackConfig, options) {
+  webpack(config: WebpackConfig) {
     config.resolve = config.resolve || {}
     config.resolve.alias = {
       ...config.resolve.alias,

@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import styles from "./photos.module.css"
 import { createPortal } from "react-dom"
 
-// ModalPortal 컴포넌트 추가
 function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
   const [mounted, setMounted] = useState(false)
 
@@ -51,9 +50,11 @@ export default function PhotosPage() {
 
   const { id: groupId } = useParams()
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!
+
   const fetchWithAuth = async (url: string) => {
     const token = localStorage.getItem("accessToken")
-    const response = await fetch(url, {
+    const response = await fetch(`${API_BASE}${url}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -61,6 +62,7 @@ export default function PhotosPage() {
     })
     return response
   }
+
 
   const loadAlbumData = useCallback(async () => {
     if (!groupId) {
@@ -73,19 +75,11 @@ export default function PhotosPage() {
       setIsLoading(true)
       setError(null)
 
-      const url = `http://localhost:8080/api/groups/${groupId}/albums`
-      const response = await fetchWithAuth(url)
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
+      const response = await fetchWithAuth(`/groups/${groupId}/albums`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const data = await response.json()
-      if (data.result) {
-        setAllAttachments(data.result)
-      } else {
-        throw new Error("데이터 형식이 올바르지 않습니다.")
-      }
+      if (data.result) setAllAttachments(data.result)
+      else throw new Error("데이터 형식이 올바르지 않습니다.")
     } catch (err) {
       console.error("앨범 데이터 로드 실패:", err)
       setError("사진을 불러오는데 실패했습니다.")
@@ -93,6 +87,7 @@ export default function PhotosPage() {
       setIsLoading(false)
     }
   }, [groupId])
+
 
   useEffect(() => {
     loadAlbumData()
@@ -149,7 +144,7 @@ export default function PhotosPage() {
     try {
       setDownloadState({ isDownloading: true, text: "⏳ 준비 중..." })
 
-      const response = await fetchWithAuth(`http://localhost:8080/api/attachments/${currentAttachment.id}/download`)
+      const response = await fetchWithAuth(`/attachments/${currentAttachment.id}/download`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

@@ -177,81 +177,96 @@ export default function ProfilePage() {
       showToast("주소 검색 서비스를 불러올 수 없습니다.", "error")
     }
   }
-
   const saveUserInfo = async (skipVerify = false) => {
+    // ────── 디버깅 로그 추가 ──────
+    console.log("▶ saveUserInfo 호출:", {
+      skipVerify,
+      isPasswordVerified,
+      pendingAction,
+    });
+    // ─────────────────────────────
+
     if (!skipVerify && !isPasswordVerified) {
-      setPendingAction("save")
-      setShowPasswordAuthModal(true)
-      return
+      setPendingAction("save");
+      setShowPasswordAuthModal(true);
+      return;
     }
 
     try {
-      setIsLoading(true)
+      setIsLoading(true);
 
-      const formData = new FormData()
-      formData.append(
+      const form = new FormData();
+      const reqData = {
+        address: editAddress || null,
+        phone: editPhone || null,
+        profileAttachmentId: userInfo?.profileAttachmentId ?? null,
+      };
+      form.append(
         "request",
-        new Blob(
-          [
-            JSON.stringify({
-              address: editAddress || null,
-              phone: editPhone || null,
-              profileAttachmentId: imageAction === "keep" ? userInfo?.profileAttachmentId : null,
-            }),
-          ],
-          { type: "application/json" },
-        ),
-      )
+        new Blob([JSON.stringify(reqData)], {
+          type: "application/json",
+        })
+      );
       if (imageAction === "change" && selectedFile) {
-        formData.append("profileImage", selectedFile)
+        form.append("profileImage", selectedFile);
       }
 
-      await api.patch("/users", formData)
+      const response = await api.patch("/users", form);
 
-      showToast("정보가 성공적으로 업데이트되었습니다.")
-      setIsEditing(false)
-      setShowPasswordAuthModal(false)
-      setIsPasswordVerified(false)
-      setImageAction("keep")
-      resetImageSelection()
+      console.log("✅ saveUserInfo 성공 응답:", response.status, response.data);  // 성공 로그
 
-      await fetchUserInfo()
+      showToast("정보가 성공적으로 업데이트되었습니다.", "success");
+      setIsEditing(false);
+      setIsPasswordVerified(false);
+      setImageAction("keep");
+      setSelectedFile(null);
+      setImagePreview("");
+      await fetchUserInfo();
     } catch (error: any) {
-      console.error("사용자 정보 업데이트 실패:", error)
-      const errorMessage = error.response?.data?.message || "정보 업데이트에 실패했습니다."
-      showToast(errorMessage, "error")
+      const status = error.response?.status;
+      console.error("❌ saveUserInfo 에러:", status, error.response?.data);
+
+      if (status === 401) {
+        showToast("비밀번호 인증이 필요합니다.", "error");
+        setPendingAction("save");
+        setShowPasswordAuthModal(true);
+      } else {
+        showToast(error.response?.data?.message || "업데이트에 실패했습니다.", "error");
+      }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
+
 
   const updatePassword = async (skipVerify = false) => {
     if (!skipVerify && !isPasswordVerified) {
-      setPendingAction("password")
-      setShowPasswordAuthModal(true)
-      return
+      setPendingAction("password");
+      setShowPasswordAuthModal(true);
+      return;
     }
-
     if (!newPassword) {
-      showToast("새 비밀번호를 입력해주세요.", "error")
-      return
+      showToast("새 비밀번호를 입력해주세요.", "error");
+      return;
     }
-
     try {
-      await api.patch("/users/password", {
-        password: newPassword,
-      })
-      showToast("비밀번호가 성공적으로 변경되었습니다.")
-      setShowPasswordModal(false)
-      setNewPassword("")
-      setIsPasswordVerified(false)
-
+      await api.patch("/users/password", { password: newPassword });
+      showToast("비밀번호가 성공적으로 변경되었습니다.", "success");
+      setShowPasswordModal(false);
+      setNewPassword("");
+      setIsPasswordVerified(false);
     } catch (error: any) {
-      console.error("비밀번호 변경 실패:", error)
-      const errorMessage = error.response?.data?.message || "비밀번호 변경에 실패했습니다."
-      showToast(errorMessage, "error")
+      const status = error.response?.status;
+      if (status === 401) {
+        showToast("비밀번호 인증이 필요합니다.", "error");
+        setPendingAction("password");
+        setShowPasswordAuthModal(true);
+      } else {
+        showToast(error.response?.data?.message || "비밀번호 변경에 실패했습니다.", "error");
+      }
     }
-  }
+  };
+
 
   const deleteAccount = async (skipVerify = false) => {
     if (!skipVerify && !isPasswordVerified) {

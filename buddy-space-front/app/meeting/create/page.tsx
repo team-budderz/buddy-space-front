@@ -28,6 +28,8 @@ export default function CreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
+
   const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
 
@@ -125,7 +127,8 @@ export default function CreatePage() {
       const token = localStorage.getItem("accessToken")
       if (!token) throw new Error("토큰이 없습니다.")
 
-      const chatRes = await fetch(`http://localhost:8080/api/group/${groupId}/chat/rooms`, {
+      const chatRes = await fetch(
+        `${API_BASE}/group/${groupId}/chat/rooms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

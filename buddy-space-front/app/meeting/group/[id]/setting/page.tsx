@@ -142,6 +142,8 @@ export default function SettingPage() {
 
     const initializeSettings = async () => {
         setIsLoading(true)
+        let data: GroupData | null = null
+
         try {
             if (!isLeader()) {
                 showToast("리더만 설정 페이지에 접근할 수 있습니다.", "error");
@@ -157,8 +159,10 @@ export default function SettingPage() {
             showToast("설정 정보를 불러오는데 실패했습니다.", "error")
         } finally {
             setIsLoading(false)
+            setCurrentGroupData(data)
         }
     }
+
 
     const showToast = (message: string, type: ToastState["type"] = "success") => {
         setToast({ show: true, message, type })
@@ -590,10 +594,10 @@ export default function SettingPage() {
     const approveMember = async (memberId: number) => {
         try {
             setIsLoading(true);
-            // 1️⃣ 가입 승인
+            // 가입 승인
             await api.patch(`/groups/${groupId}/members/${memberId}/approve`);
 
-            // 2️⃣ 채팅방 목록 조회 (경로를 singular 'group' 으로!)
+            // 2️채팅방 목록 조회 (경로를 singular 'group' 으로!)
             const roomsRes = await api.get(`/group/${groupId}/chat/rooms/my`);
             const rooms = roomsRes.data.result ?? roomsRes.data.data;
             if (!Array.isArray(rooms) || rooms.length === 0) {
@@ -601,7 +605,7 @@ export default function SettingPage() {
             }
             const chatRoomId = rooms[0].roomId;
 
-            // 3️⃣ 해당 방에 사용자 초대
+            // 3️해당 방에 사용자 초대
             await api.post(
                 `/group/${groupId}/chat/rooms/${chatRoomId}/participants`,
                 { userId: memberId }

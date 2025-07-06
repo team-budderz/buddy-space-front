@@ -9,7 +9,6 @@ interface ModalPortalProps {
   isOpen: boolean;
 }
 
-// ModalPortal 컴포넌트 추가
 const ModalPortal: React.FC<ModalPortalProps> = ({ children, isOpen }) => {
   const [mounted, setMounted] = useState(false)
 
@@ -403,61 +402,63 @@ export default function MissionsPage() {
     setPostModal(true)
   }
 
-  async function handlePostSubmit(e: FormEvent) {
-    e.preventDefault()
+ const handlePostSubmit = async (e: FormEvent) => {
+  e.preventDefault()
 
-    try {
-      const headers = await getAuthHeaders()
+  try {
+    const headers = await getAuthHeaders()
 
-      if (editingPost) {
-        if (!canEditPost(editingPost)) {
-          alert("수정 권한이 없습니다.")
-          return
-        }
-
-        const response = await api.patch(
-          `/groups/${groupId}/missions/${(editingPost as any).missionId}/posts/${editingPost.missionPostId}`,
-          { contents: postForm.contents },
-          { headers },
-        )
-
-        if (response.status === 200) {
-          alert("인증이 수정되었습니다.")
-          setPostForm({ contents: "" })
-          setEditingPost(null)
-          setPostModal(false)
-          await loadAllPosts()
-        }
-      }
-
-      const missionId = missionForPost
-      if (!missionId) {
-        alert("미션을 먼저 선택해주세요.")
+    if (editingPost) {
+      if (!canEditPost(editingPost)) {
+        alert("수정 권한이 없습니다.")
         return
       }
 
-      if (!canCreatePost()) {
-        alert("인증 생성 권한이 없습니다.")
-        return
-      }
-
-      const response = await api.post(
-        `/groups/${groupId}/missions/${missionForPost}/posts`,
+      const response = await api.patch(
+        `/groups/${groupId}/missions/${editingPost.missionId}/posts/${editingPost.missionPostId}`,
         { contents: postForm.contents },
         { headers },
       )
 
       if (response.status === 200) {
-        alert("인증이 등록되었습니다.")
+        alert("인증이 수정되었습니다.")
         setPostForm({ contents: "" })
+        setEditingPost(null)
         setPostModal(false)
         await loadAllPosts()
+
+        return 
       }
-    } catch (err) {
-      console.error("Failed to save post", err)
-      alert("인증 저장에 실패했습니다.")
     }
+
+    const missionId = missionForPost
+    if (!missionId) {
+      alert("미션을 먼저 선택해주세요.")
+      return
+    }
+
+    if (!canCreatePost()) {
+      alert("인증 생성 권한이 없습니다.")
+      return
+    }
+
+    const response = await api.post(
+      `/groups/${groupId}/missions/${missionForPost}/posts`,
+      { contents: postForm.contents },
+      { headers },
+    )
+
+    if (response.status === 200) {
+      alert("인증이 등록되었습니다.")
+      setPostForm({ contents: "" })
+      setPostModal(false)
+      await loadAllPosts()
+    }
+  } catch (err) {
+    console.error("Failed to save post", err)
+    alert("인증 저장에 실패했습니다.")
   }
+}
 
   async function deletePost(p: MissionPost) {
     if (!canDeletePost(p)) {

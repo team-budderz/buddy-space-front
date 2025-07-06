@@ -5,6 +5,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
+import api from '@/app/api'
 import styles from "./signup.module.css"
 import Link from "next/link"
 
@@ -65,7 +66,7 @@ export default function SignupPage() {
 
   // 주소 검색
   const handleAddressSearch = () => {
-    ;new (window as any).daum.Postcode({
+    ; new (window as any).daum.Postcode({
       oncomplete: (data: any) => {
         const jibunAddress = data.jibunAddress
         const { sido, sigungu, bname } = data
@@ -96,7 +97,7 @@ export default function SignupPage() {
     }
 
     try {
-      await axios.post("http://localhost:8080/api/users/signup", { ...form })
+      await api.post("/users/signup", form)
       setServerMessage("회원가입 성공! 로그인 페이지로 이동합니다.")
       setMessageType("success")
       setTimeout(() => router.push("/login"), 1500)

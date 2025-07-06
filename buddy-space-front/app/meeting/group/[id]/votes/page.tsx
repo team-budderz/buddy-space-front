@@ -411,7 +411,6 @@ export default function VotePage() {
               console.log(`[VOTE LIST] Vote ID: ${vote.voteId}, Author ID: ${vote.authorId}, Current User ID: ${currentUserId}`)
               return (
                 <li key={vote.voteId} className={styles.voteItem}>
-                  {/* voteId 숫자를 넘겨줍니다 */}
                   <div
                     className={styles.voteContent}
                     onClick={() => fetchVoteDetail(vote.voteId)}
