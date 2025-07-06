@@ -187,17 +187,24 @@ export default function ProfilePage() {
 
     try {
       setIsLoading(true);
-      const body = {
+
+      const form = new FormData();
+      const reqData = {
         address: editAddress || null,
         phone: editPhone || null,
-        imageUrl:
-          imageAction === "keep"
-            ? userInfo?.profileImageUrl
-            : imageAction === "remove"
-              ? null
-              : "" /* 업로드 후 받아온 URL */,
+        profileAttachmentId: userInfo?.profileAttachmentId ?? null,
       };
-      await api.patch("/users", body);
+      form.append(
+        "request",
+        new Blob([JSON.stringify(reqData)], {
+          type: "application/json",
+        })
+      );
+      if (imageAction === "change" && selectedFile) {
+        form.append("profileImage", selectedFile);
+      }
+
+      await api.patch("/users", form);
 
       showToast("정보가 성공적으로 업데이트되었습니다.", "success");
       setIsEditing(false);
@@ -219,6 +226,7 @@ export default function ProfilePage() {
       setIsLoading(false);
     }
   };
+
 
   const updatePassword = async (skipVerify = false) => {
     if (!skipVerify && !isPasswordVerified) {
