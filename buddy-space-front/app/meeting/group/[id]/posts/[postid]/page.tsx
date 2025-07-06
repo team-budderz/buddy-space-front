@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { useParams, useRouter } from "next/navigation"
-import { useGroupPermissions } from "../../layout"
+import { useGroupPermissions } from  "@/app/components/hooks/usegrouppermissiont";
 import styles from "../posts.module.css"
 import api from "@/app/api"
 

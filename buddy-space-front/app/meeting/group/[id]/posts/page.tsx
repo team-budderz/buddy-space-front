@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useGroupPermissions, usePermissionChecker } from "../layout"
+import { useGroupPermissions, usePermissionChecker } from  "@/app/components/hooks/usegrouppermissiont";
 import styles from "./posts.module.css"
 import api from "@/app/api"
 
