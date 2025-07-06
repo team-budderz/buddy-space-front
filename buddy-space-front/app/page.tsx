@@ -12,10 +12,6 @@ export default function HomePage() {
     setIsVisible(true)
   }, [])
 
-  const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:8080/oauth2/authorization/google"
-  }
-
   const features = [
     {
       icon: "👥",
