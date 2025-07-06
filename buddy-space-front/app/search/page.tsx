@@ -195,7 +195,14 @@ export default function SearchPage() {
                       const res = await api.post(
                         `/groups/${group.groupId}/members/requests`
                       )
-                      alert('참여 요청이 완료되었습니다.')
+                      if (res.status === 200) {
+                        setGroups(prevGroups =>
+                          prevGroups.map(g =>
+                            g.groupId === group.groupId ? { ...g, joinStatus: 'REQUESTED' } : g
+                          )
+                        )
+                        alert('참여 요청이 완료되었습니다.')
+                      }
                     } catch {
                       alert('참여 요청 중 오류가 발생했습니다.')
                     }

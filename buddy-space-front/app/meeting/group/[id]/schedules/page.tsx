@@ -12,6 +12,7 @@ import {
   eachDayOfInterval,
   isSameDay,
   parseISO,
+  startOfDay
 } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -21,9 +22,6 @@ import { useGroupPermissions } from '../layout';
 import { useParams } from 'next/navigation';
 import { ko } from 'date-fns/locale'
 import { registerLocale } from 'react-datepicker';
-import { usePermissionChecker } from '../layout';
-
-
 registerLocale('ko', ko);
 
 interface Schedule {
@@ -47,22 +45,6 @@ interface ScheduleDetail {
   createdAt: string;
 }
 
-import { createPortal } from "react-dom"
-
-// ModalPortal 컴포넌트 추가
-function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    return () => setMounted(false)
-  }, [])
-
-  if (!mounted || !isOpen) return null
-
-  return createPortal(children, document.body)
-}
-
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -75,7 +57,6 @@ export default function CalendarPage() {
   const [detailData, setDetailData] = useState<ScheduleDetail | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
-  const { canCreateSchedule, canDeleteSchedule } = usePermissionChecker();
 
   const params = useParams();
   const groupId = params.id as string;
@@ -193,11 +174,15 @@ export default function CalendarPage() {
       return;
     }
     try {
+      const toKSTISOString = (date: Date) => {
+        const offsetMs = 9 * 60 * 60 * 1000; // 9시간
+        return new Date(date.getTime() + offsetMs).toISOString().slice(0, -1); // Z 제거
+      };
       const body = {
         title: formData.title,
         content: formData.description,
-        startAt: formData.start.toISOString(),
-        endAt: formData.end.toISOString(),
+        startAt: toKSTISOString(formData.start),
+        endAt: toKSTISOString(formData.end),
       };
       await api.post(
         `/groups/${groupId}/schedules`,
@@ -221,11 +206,15 @@ export default function CalendarPage() {
       return;
     }
     try {
+      const toKSTISOString = (date: Date) => {
+        const offsetMs = 9 * 60 * 60 * 1000; // 9시간
+        return new Date(date.getTime() + offsetMs).toISOString().slice(0, -1); // Z 제거
+      };
       const body = {
         title: formData.title,
         content: formData.description,
-        startAt: formData.start.toISOString(),
-        endAt: formData.end.toISOString(),
+        startAt: toKSTISOString(formData.start),
+        endAt: toKSTISOString(formData.end),
       };
       await api.put(
         `/groups/${groupId}/schedules/${selectedScheduleId}`,
@@ -269,11 +258,7 @@ export default function CalendarPage() {
         <h2>{format(currentDate, 'yyyy년 MM월')}</h2>
         <button onClick={() => setCurrentDate(addMonths(currentDate, 1))}>{'>'}</button>
         <button onClick={() => setCurrentDate(new Date())}>오늘</button>
-        {canCreateSchedule() && (
-          <button className={styles.createBtn} onClick={openModalForCreate}>
-            일정 만들기
-          </button>
-        )}
+        <button className={styles.createBtn} onClick={openModalForCreate}>일정 만들기</button>
       </div>
 
       <div className={styles.calendarGrid}>
@@ -281,7 +266,13 @@ export default function CalendarPage() {
         {days.map((day, i) => (
           <div key={i} className={`${styles.dayCell} ${day.getDay() === 0 ? styles.sundayCell : day.getDay() === 6 ? styles.saturdayCell : ''}`}>
             <div className={`${styles.dayNumber} ${isSameDay(today, day) ? styles.today : ''}`}>{day.getDate()}</div>
-            {schedules.filter(s => day >= s.start && day <= s.end).map((evt, j) => (
+            {/* Modify this line */}
+            {schedules.filter(s => {
+              const scheduleStartDay = startOfDay(s.start);
+              const scheduleEndDay = startOfDay(s.end);
+              const currentDay = startOfDay(day);
+              return currentDay >= scheduleStartDay && currentDay <= scheduleEndDay;
+            }).map((evt, j) => (
               <div key={j} className={styles.eventBar} onClick={() => showDetail(evt.id)}>{evt.title}</div>
             ))}
           </div>
@@ -304,67 +295,60 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      <ModalPortal isOpen={detailVisible}>
-        {detailData && (
-          <div className={styles.modalOverlay} onClick={closeDetail}>
-            <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-              <div className={styles.detailHeader}>
-                <div className={styles.authorInfo}>
-                  <img
-                    src={detailData.authorImageUrl || '/avatar.png'}
-                    alt="avatar"
-                    className={styles.avatar}
-                  />
-                  <div>
-                    <div className={styles.authorName}>{detailData.authorName}</div>
-                    <div className={styles.postDate}>
-                      {format(parseISO(detailData.createdAt), 'yyyy년 MM월 dd일')}
+      {detailVisible && detailData && (
+        <div className={styles.modalOverlay} onClick={closeDetail}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.detailHeader}>
+              <div className={styles.authorInfo}>
+                <img
+                  src={detailData.authorImageUrl || '/avatar.png'}
+                  alt="avatar"
+                  className={styles.avatar}
+                />
+                <div>
+                  <div className={styles.authorName}>{detailData.authorName}</div>
+                  <div className={styles.postDate}>
+                    {format(parseISO(detailData.createdAt), 'yyyy년 MM월 dd일')}
+                  </div>
+                </div>
+              </div>
+              {detailData.authorName === currentUserName && (
+                <div className={styles.menuWrapper}>
+                  <button
+                    className={styles.menuBtn}
+                    onClick={() => setMenuVisible(v => !v)}
+                  >
+                    ⋮
+                  </button>
+                  {menuVisible && (
+                    <div className={styles.menuList}>
+                      <button onClick={() => selectedScheduleId && openEditModal(selectedScheduleId)}>
+                        수정하기
+                      </button>
+                      <button onClick={() => selectedScheduleId && handleDelete(selectedScheduleId)}>
+                        삭제하기
+                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
-                {(detailData.authorName === currentUserName || canDeleteSchedule()) && (
-                  <div className={styles.menuWrapper}>
-                    <button
-                      className={styles.menuBtn}
-                      onClick={() => setMenuVisible(v => !v)}
-                    >
-                      ⋮
-                    </button>
-                    {menuVisible && (
-                      <div className={styles.menuList}>
-                        {/* 작성자만 보이는 수정 버튼 */}
-                        {detailData.authorName === currentUserName && (
-                          <button onClick={() => selectedScheduleId && openEditModal(selectedScheduleId)}>
-                            수정하기
-                          </button>
-                        )}
-                        {/* 작성자이거나 권한(리더·부리더)이 있으면 보이는 삭제 버튼 */}
-                        <button onClick={() => selectedScheduleId && handleDelete(selectedScheduleId)}>
-                          삭제하기
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+              )}
 
+            </div>
 
+            <div className={styles.detailBody}>
+              <h3>기간 </h3>
+              <div className={styles.detailDates}>
+                {format(parseISO(detailData.startAt), 'yyyy.MM.dd HH:mm')} ~{' '}
+                {format(parseISO(detailData.endAt), 'yyyy.MM.dd HH:mm')}
               </div>
-
-              <div className={styles.detailBody}>
-                <h3>기간 </h3>
-                <div className={styles.detailDates}>
-                  {format(parseISO(detailData.startAt), 'yyyy.MM.dd HH:mm')} ~{' '}
-                  {format(parseISO(detailData.endAt), 'yyyy.MM.dd HH:mm')}
-                </div>
-                <h3 className={styles.detailTitle}>일정 : {detailData.title}</h3>
-                <div className={styles.detailContent}>{detailData.content}</div>
-              </div>
+              <h3 className={styles.detailTitle}>일정 : {detailData.title}</h3>
+              <div className={styles.detailContent}>{detailData.content}</div>
             </div>
           </div>
-        )}
-      </ModalPortal>
+        </div>
+      )}
 
-      <ModalPortal isOpen={modalVisible}>
+      {modalVisible && (
         <div className={styles.modalOverlay} onClick={closeModal}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <h3 style={{ textAlign: 'center', marginBottom: 16 }}>
@@ -444,7 +428,7 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
-      </ModalPortal>
+      )}
     </div >
   );
 }

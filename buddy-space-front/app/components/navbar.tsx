@@ -1,13 +1,16 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState, useRef } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import api from "@/app/api"
 import { useChatDropdown } from "./chat/useChatDropdown"
 import styles from "./navbar.module.css"
 import ChatWindow from "./chat/chat-window"
 
+const API_BASE = process.env.NODE_ENV === "development"
+  ? "http://localhost:8080"
+  : "https://api.budderz.co.kr";
 
 export interface ChatRoom {
   roomId: number
@@ -62,7 +65,7 @@ export default function NavBar() {
   const logoutUser = () => {
     localStorage.removeItem("accessToken")
     if (sseEventSource) {
-        sseEventSource.close();
+      sseEventSource.close();
     }
     router.push("/login")
   }
@@ -89,9 +92,9 @@ export default function NavBar() {
 
 
     return () => {
-        if (sseEventSource) {
-            sseEventSource.close();
-        }
+      if (sseEventSource) {
+        sseEventSource.close();
+      }
     }
   }, [])
 
@@ -114,152 +117,158 @@ export default function NavBar() {
     }
   }
 
-  const loadAllChatRooms = async () => {
-    setIsLoadingChats(true)
+  const loadAllChatRooms = useCallback(async () => {
+    setIsLoadingChats(true);
     try {
-      const token = localStorage.getItem("accessToken")
-      if (!token) throw new Error("토큰이 없습니다. 로그인해주세요.")
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("토큰이 없습니다.");
 
-      const groupsRes = await fetch("http://localhost:8080/api/groups/my", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      const groupsData = await groupsRes.json()
+      // 1) 내가 속한 그룹 목록 조회
+      const groupsRes = await fetch(`${API_BASE}/api/groups/my`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const groupsData = await groupsRes.json();
       const groups = Array.isArray(groupsData.result?.content)
         ? groupsData.result.content
-        : []
+        : [];
 
-      const allRooms: ChatRoom[] = []
+      const allRooms: ChatRoom[] = [];
 
       for (const group of groups) {
-        const groupId = group.groupId || group.id
-        const groupName = group.name || group.groupName
-        if (!groupId) continue
+        const groupId = group.groupId || group.id;
+        if (!groupId) continue;
 
-        const chatRes = await fetch(`http://localhost:8080/api/group/${groupId}/chat/rooms/my`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        })
+        // 2) 채팅 방 목록 조회 (여기서는 ID·이름만 들어옴)
+        const chatRes = await fetch(
+          `${API_BASE}/api/group/${groupId}/chat/rooms/my`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!chatRes.ok) continue;
+        const chatData = await chatRes.json();
+        if (!Array.isArray(chatData.result)) continue;
 
-        if (chatRes.ok) {
-          const chatData = await chatRes.json() // ✅ 여기서 chatData 선언
-          if (Array.isArray(chatData.result)) {
-            const roomsWithGroupId = chatData.result.map((room: any) => ({
-              roomId: room.roomId,
-              roomName: room.name,           // ✅ name → roomName
-              roomType: room.chatRoomType,   // ✅ chatRoomType → roomType
+        // 3) 각 방에 대해 상세 조회 → 정확한 type 가져오기
+        const detailedRooms = await Promise.all(
+          chatData.result.map(async (room: any) => {
+            // 상세 조회
+            const detailRes = await fetch(
+              `${API_BASE}/api/group/${groupId}/chat/rooms/${room.roomId}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!detailRes.ok) throw new Error("채팅방 상세 조회 실패");
+
+            const detailData = await detailRes.json();
+            return {
+              roomId: detailData.result.roomId,
+              roomName: detailData.result.name,
+              roomType: detailData.result.type,
               groupId,
-              groupName,
-            }))
-            allRooms.push(...roomsWithGroupId)
-          }
-        }
+            } as ChatRoom;
+          })
+        );
+
+        allRooms.push(...detailedRooms);
       }
 
-      setChatRooms(allRooms)
+      setChatRooms(allRooms);
     } catch (err) {
-      console.error("채팅방 로드 실패:", err)
+      console.error("채팅방 로드 실패:", err);
     } finally {
-      setIsLoadingChats(false)
+      setIsLoadingChats(false);
     }
-  }
+  }, []);
 
   const connectNotificationSSE = () => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
 
     if (sseEventSource) {
-        sseEventSource.close();
+      sseEventSource.close();
     }
 
     let clientId = localStorage.getItem('clientId');
     if (!clientId) {
-        clientId = crypto.randomUUID();
-        localStorage.setItem('clientId', clientId);
+      clientId = crypto.randomUUID();
+      localStorage.setItem('clientId', clientId);
     }
 
     const newEventSource = new EventSource(`http://localhost:8080/api/notifications/subscribe?clientId=${clientId}`, {
-        withCredentials: true
+      withCredentials: true
     });
 
     newEventSource.addEventListener("connect", (event) => {
-        console.log("SSE 연결 성공:", event.data);
+      console.log("SSE 연결 성공:", event.data);
     });
 
     newEventSource.addEventListener("notification", async (event) => {
-        const notification = JSON.parse(event.data);
-        console.log("새 알림 도착:", notification);
-        await loadInitialNotifications();
+      const notification = JSON.parse(event.data);
+      console.log("새 알림 도착:", notification);
+      await loadInitialNotifications();
     });
 
     newEventSource.onerror = (event) => {
-        console.error("SSE 연결 오류 또는 종료", event);
-        newEventSource.close();
-        setTimeout(connectNotificationSSE, 5000);
+      console.error("SSE 연결 오류 또는 종료", event);
+      newEventSource.close();
+      setTimeout(connectNotificationSSE, 5000);
     };
 
     setSseEventSource(newEventSource);
   }
 
   const fetchNotifications = async (page = 0) => {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return { content: [], last: true, number: 0 };
-      try {
-          const response = await api.get(`/notifications?page=${page}`, {
-              headers: { Authorization: `Bearer ${token}` }
-          });
-          return response.data.result;
-      } catch (error) {
-          console.error("알림 목록 요청 중 오류:", error);
-          return { content: [], last: true, number: 0 };
-      }
+    const token = localStorage.getItem("accessToken");
+    if (!token) return { content: [], last: true, number: 0 };
+    try {
+      const response = await api.get(`/notifications?page=${page}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data.result;
+    } catch (error) {
+      console.error("알림 목록 요청 중 오류:", error);
+      return { content: [], last: true, number: 0 };
+    }
   };
 
   const loadInitialNotifications = async () => {
-      setIsLoadingNotifications(true);
-      const data = await fetchNotifications(0);
-      setNotifications(data.content);
-      setLastPage(data.last);
-      setCurrentPage(data.number + 1);
-      const unreadCount = data.content.filter((n: Notification) => !n.isRead).length;
-      setNotificationCount(unreadCount);
-      setIsLoadingNotifications(false);
+    setIsLoadingNotifications(true);
+    const data = await fetchNotifications(0);
+    setNotifications(data.content);
+    setLastPage(data.last);
+    setCurrentPage(data.number + 1);
+    const unreadCount = data.content.filter((n: Notification) => !n.isRead).length;
+    setNotificationCount(unreadCount);
+    setIsLoadingNotifications(false);
   };
 
   const loadMoreNotifications = async () => {
-      if (lastPage || isLoadingNotifications) return;
-      setIsLoadingNotifications(true);
-      const data = await fetchNotifications(currentPage);
-      setNotifications(prev => [...prev, ...data.content]);
-      setLastPage(data.last);
-      setCurrentPage(data.number + 1);
-      setIsLoadingNotifications(false);
+    if (lastPage || isLoadingNotifications) return;
+    setIsLoadingNotifications(true);
+    const data = await fetchNotifications(currentPage);
+    setNotifications(prev => [...prev, ...data.content]);
+    setLastPage(data.last);
+    setCurrentPage(data.number + 1);
+    setIsLoadingNotifications(false);
   };
 
   useEffect(() => {
-      const observer = new IntersectionObserver(
-          entries => {
-              if (entries[0].isIntersecting) {
-                  loadMoreNotifications();
-              }
-          },
-          { threshold: 1 }
-      );
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          loadMoreNotifications();
+        }
+      },
+      { threshold: 1 }
+    );
 
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current);
+    }
+
+    return () => {
       if (sentinelRef.current) {
-          observer.observe(sentinelRef.current);
+        observer.unobserve(sentinelRef.current);
       }
-
-      return () => {
-          if (sentinelRef.current) {
-              observer.unobserve(sentinelRef.current);
-          }
-      };
+    };
   }, [sentinelRef, loadMoreNotifications]);
 
 
@@ -282,30 +291,30 @@ export default function NavBar() {
   const convertApiUrlToPageUrl = (apiUrl: string) => {
     const postMatch = apiUrl.match(/^\/api\/groups\/(\d+)\/posts\/(\d+)$/);
     if (postMatch) {
-        const groupId = postMatch[1];
-        const postId = postMatch[2];
-        return `/meeting/group/${groupId}/post/${postId}`;
+      const groupId = postMatch[1];
+      const postId = postMatch[2];
+      return `/meeting/group/${groupId}/post/${postId}`;
     }
     return apiUrl;
   }
 
   const handleNotificationClick = async (notification: Notification) => {
-      const { notificationId, url, isRead } = notification;
-      if (!isRead) {
-          try {
-              await api.patch(`/notifications/${notificationId}/read`, {}, {
-                  headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
-              });
-              setNotifications(prev =>
-                  prev.map(n => (n.notificationId === notificationId ? { ...n, isRead: true } : n))
-              );
-              setNotificationCount(prev => (prev > 0 ? prev - 1 : 0));
-          } catch (error) {
-              console.error("알림 읽음 처리 실패:", error);
-          }
+    const { notificationId, url, isRead } = notification;
+    if (!isRead) {
+      try {
+        await api.patch(`/notifications/${notificationId}/read`, {}, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+        });
+        setNotifications(prev =>
+          prev.map(n => (n.notificationId === notificationId ? { ...n, isRead: true } : n))
+        );
+        setNotificationCount(prev => (prev > 0 ? prev - 1 : 0));
+      } catch (error) {
+        console.error("알림 읽음 처리 실패:", error);
       }
-      const pageUrl = convertApiUrlToPageUrl(url);
-      router.push(pageUrl);
+    }
+    const pageUrl = convertApiUrlToPageUrl(url);
+    router.push(pageUrl);
   };
 
   return (
@@ -437,14 +446,17 @@ export default function NavBar() {
       </nav>
 
       {/* 채팅 창 */}
-      {activeChatWindow && userInfo && (
+      {activeChatWindow && userInfo && activeChatWindow.groupId != null && (
         <ChatWindow
           roomId={activeChatWindow.roomId}
           roomName={activeChatWindow.roomName}
           roomType={activeChatWindow.roomType}
           groupId={activeChatWindow.groupId}
           currentUserId={userInfo.id}
-          onClose={() => closeChatWindow(activeChatWindow.roomId)}
+          onClose={() => {
+            closeChatWindow(activeChatWindow.roomId);
+            loadAllChatRooms();
+          }}
         />
       )}
       {activeChatWindow && !activeChatWindow.groupId && (

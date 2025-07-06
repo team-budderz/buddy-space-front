@@ -28,12 +28,6 @@ interface Notice {
   createdAt: string
 }
 
-async function getAuthHeaders(): Promise<{ Authorization: string }> {
-  const token = localStorage.getItem("accessToken")
-  if (!token) throw new Error("토큰이 없습니다. 로그인해주세요.")
-  return { Authorization: `Bearer ${token}` }
-}
-
 export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [notices, setNotices] = useState<Notice[]>([])
@@ -54,15 +48,10 @@ export default function PostsPage() {
     }
   }, [groupId, permissionsLoading])
 
-
   // 공지사항 로드
   const loadNotices = async () => {
     try {
-      const headers = await getAuthHeaders()
-      const res = await api.get(
-        `/groups/${groupId}/posts/notice`,
-        { headers }
-      )
+      const res = await api.get(`/groups/${groupId}/posts/notice`)
       if (res.status === 200 && res.data.result) {
         setNotices(res.data.result)
       }
@@ -75,11 +64,7 @@ export default function PostsPage() {
   const loadPosts = async () => {
     try {
       setLoading(true)
-      const headers = await getAuthHeaders()
-      const res = await api.get(
-        `/groups/${groupId}/posts`,
-        { headers }
-      )
+      const res = await api.get(`/groups/${groupId}/posts`)
       if (res.status === 200 && res.data.result) {
         setPosts(res.data.result)
       }
@@ -90,7 +75,6 @@ export default function PostsPage() {
       setLoading(false)
     }
   }
-
 
   // HTML 콘텐츠에서 미리보기 텍스트와 썸네일 추출
   const extractPostPreviewAndThumbnail = (contentHtml: string) => {
@@ -244,24 +228,17 @@ export default function PostsPage() {
                     <div className={styles.postContent}>
                       <div className={styles.postMeta}>
                         <img
-                          src={post.userImgUrl || "/placeholder.svg?height=40&width=40"}
+                          src={post.userImgUrl || "/placeholder.svg?height=28&width=28"}
                           alt={post.userName}
                           className={styles.postAvatar}
                         />
-                        <div className={styles.authorInfo}>
-                          <div className={styles.userName}>{post.userName}</div>
-                          <div className={styles.postDate}>{formatPostDate(post.createdAt)}</div>
-                        </div>
+                        <span className={styles.userName}>{post.userName}</span>
+                        <span className={styles.postDate}>· {formatPostDate(post.createdAt)}</span>
+                        <span className={styles.commentCount}>· 💬 {post.commentsNum}</span>
                       </div>
                       <div className={styles.postText}>
                         {textPreview}
                         {hasMore && <span className={styles.moreText}> ...더보기</span>}
-                      </div>
-                      <div className={styles.postFooter}>
-                        <div className={styles.commentCount}>
-                          <span className={styles.commentIcon}>💬</span>
-                          댓글 {post.commentsNum}개
-                        </div>
                       </div>
                     </div>
                   </div>

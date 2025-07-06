@@ -10,6 +10,7 @@ import styles from "./login.module.css"
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [capsLockOn, setCapsLockOn] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -39,7 +40,6 @@ export default function LoginPage() {
       console.log("응답 전체", res)
       console.log("응답 데이터", res.data)
 
-      localStorage.setItem("refreshToken", res.data.result.refreshToken)
       localStorage.setItem("accessToken", res.data.result.accessToken)
       localStorage.setItem("userEmail", email)
       localStorage.setItem("userPassword", password)
@@ -93,9 +93,17 @@ export default function LoginPage() {
               placeholder="비밀번호를 입력하세요"
               className={styles.input}
               required
+              onKeyDown={(e) => {
+                if (e.getModifierState && e.getModifierState('CapsLock')) {
+                  setCapsLockOn(true);
+                } else {
+                  setCapsLockOn(false);
+                }
+              }}
             />
           </div>
 
+          {capsLockOn && <div className={styles.capsLockMessage}>CAPS LOCK이 켜져 있습니다.</div>}
           {error && <div className={styles.errorMessage}>{error}</div>}
 
           <button type="submit" className={styles.loginButton} disabled={isLoading}>

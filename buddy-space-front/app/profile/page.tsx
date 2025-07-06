@@ -213,6 +213,7 @@ export default function ProfilePage() {
       setIsPasswordVerified(false)
       setImageAction("keep")
       resetImageSelection()
+      setShowPasswordAuthModal(false) // 비밀번호 확인 모달 명시적으로 닫기
       await fetchUserInfo()
     } catch (error: any) {
       console.error("사용자 정보 업데이트 실패:", error)

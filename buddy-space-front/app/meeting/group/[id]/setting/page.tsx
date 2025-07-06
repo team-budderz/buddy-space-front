@@ -424,7 +424,29 @@ export default function SettingPage() {
         }
     };
 
-    // src/app/meeting/group/[id]/setting/page.tsx
+    const openInviteLinkModal = async () => {
+        if (!hasPermission("CREATE_INVITE_LINK")) {
+            showToast("초대 링크를 생성할 권한이 없습니다.", "error")
+            return
+        }
+        try {
+            setIsLoading(true)
+            const response = await api.post(`/groups/${groupId}/invites`)
+            if (response.status === 200 && response.data.result) {
+                const inviteCode = response.data.result.code
+                const inviteLink = `${window.location.origin}/invite?code=${inviteCode}`
+                navigator.clipboard.writeText(inviteLink)
+                showToast("초대 링크가 클립보드에 복사되었습니다!", "success")
+            } else {
+                throw new Error(response.data.message || "초대 링크 생성 실패")
+            }
+        } catch (error: any) {
+            console.error("초대 링크 생성 실패:", error)
+            showToast(error.message || "초대 링크 생성 중 오류가 발생했습니다.", "error")
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     const updateGroupAddress = async () => {
         if (!confirm("내 위치 정보를 기반으로 벗터의 동네를 업데이트하시겠습니까?")) {
@@ -1603,6 +1625,17 @@ export default function SettingPage() {
                             <div className={styles.settingsMenuText}>
                                 <h4>기능별 권한 설정</h4>
                                 <p>각 기능별로 필요한 권한을 설정할 수 있습니다</p>
+                            </div>
+                        </div>
+                        <span className={styles.settingsMenuArrow}>›</span>
+                    </div>
+
+                    <div className={styles.settingsMenuItem} onClick={openInviteLinkModal}>
+                        <div className={styles.settingsMenuContent}>
+                            <span className={styles.settingsMenuIcon}>🔗</span>
+                            <div className={styles.settingsMenuText}>
+                                <h4>초대 링크 생성</h4>
+                                <p>벗터 가입을 위한 초대 링크를 생성합니다</p>
                             </div>
                         </div>
                         <span className={styles.settingsMenuArrow}>›</span>

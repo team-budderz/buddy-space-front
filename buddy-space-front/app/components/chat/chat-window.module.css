@@ -125,11 +125,22 @@
 }
 
 .membersSidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 220px;
+  height: 100%;
   border-right: 1px solid #e2e8f0;
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   padding: 20px;
   overflow-y: auto;
+  z-index: 10;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.membersSidebar.open {
+  transform: translateX(0);
 }
 
 .membersSidebar h4 {
@@ -261,6 +272,7 @@
 
 .otherMessage {
   justify-content: flex-start;
+  align-items: flex-start; /* 아이템들을 위쪽으로 정렬 */
 }
 
 .senderAvatar {
@@ -275,7 +287,7 @@
 
 .messageContent {
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* 세로 정렬 */
   align-items: flex-start;
   gap: 4px;
 }
@@ -499,4 +511,108 @@
   .textInput:focus {
     border-color: #667eea;
   }
+}
+.roomTitleContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.memberCount {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+.membersHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.membersHeader h4 {
+  margin: 0;
+}
+
+.closeMembersButton {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+}
+.actionButton {
+  padding: 8px 14px;
+  border: 1px solid #667eea;
+  background: #667eea;
+  color: white;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.actionButton:hover {
+  background: #5a67d8;
+  border-color: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.overlayList {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 20px;
+  overflow-y: auto;
+  z-index: 20; /* Higher than membersSidebar */
+  display: flex;
+  flex-direction: column;
+}
+
+.overlayList h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.inviteKickButton {
+  padding: 6px 10px;
+  border: 1px solid #3b82f6;
+  background: #3b82f6;
+  color: white;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto; /* Push button to the right */
+}
+
+.inviteKickButton:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.closeOverlayButton {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 20px;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.closeOverlayButton:hover {
+  background: #dc2626;
 }

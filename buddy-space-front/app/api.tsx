@@ -13,14 +13,15 @@ const baseURL =
 export async function reissueToken() {
   try {
     console.debug("[Token] 재발급 요청 시작");
-    const refreshToken = localStorage.getItem("refreshToken");
+
+     // 쿠키 기반 재발급 요청이므로 body 없이 요청
     const res = await axios.post(
       `${baseURL}/token/refresh`,
-      { refreshToken },
+      null,
       { withCredentials: true }
     );
     console.debug("[Token] 재발급 응답:", res.data);
-    return res.data; // { accessToken, refreshToken }
+    return res.data.result; // { accessToken }
   } catch (e: any) {
     console.error("[Token] 재발급 실패:", e.response?.status, e.response?.data || e.message);
     throw e;

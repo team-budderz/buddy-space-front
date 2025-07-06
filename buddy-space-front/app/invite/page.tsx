@@ -33,6 +33,13 @@ export default function InvitePage() {
   const [errorInfo, setErrorInfo] = useState({ title: "", message: "" })
   const [toast, setToast] = useState<ToastState>({ show: false, message: "", type: "success" })
 
+  const showToast = (message: string, type: ToastState["type"] = "success") => {
+    setToast({ show: true, message, type })
+    setTimeout(() => {
+      setToast((prev) => ({ ...prev, show: false }))
+    }, 3000)
+  }
+
   useEffect(() => {
     const code = extractInviteCode()
     if (!code) {

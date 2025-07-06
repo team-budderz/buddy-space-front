@@ -1,13 +1,7 @@
 "use client"
 
-import { useCallback } from "react"
-
-import { useEffect } from "react"
-
-import { useRef } from "react"
-
-import { useState } from "react"
-
+import { useCallback, useEffect, useRef, useState, useContext } from "react"
+import { useChatPermissions } from "./useChatPermissions"
 import type React from "react"
 import { Client, type Frame } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
@@ -43,7 +37,14 @@ interface Message {
 
 interface ChatMember {
   userId: number
-  userName: string
+  name: string
+  profileUrl?: string
+  role?: "LEADER" | "SUB_LEADER" | "MEMBER"
+}
+
+interface GroupMembers {
+  id: number
+  name: string
   profileImageUrl?: string
   role?: "LEADER" | "SUB_LEADER" | "MEMBER"
 }
@@ -57,7 +58,7 @@ interface ChatWindowProps {
   roomId: number
   roomName: string
   roomType: "GROUP" | "DIRECT"
-  groupId?: number
+  groupId: number // Made required
   onClose: () => void
   currentUserId: number
 }
@@ -67,10 +68,17 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
   const [newMessage, setNewMessage] = useState("")
   const [members, setMembers] = useState<ChatMember[]>([])
   const [showMembers, setShowMembers] = useState(false)
+  const [showInviteMembers, setShowInviteMembers] = useState(false) // New state
+  const [showKickMembers, setShowKickMembers] = useState(false) // New state
+  const [allGroupMembers, setAllGroupMembers] = useState<GroupMembers[]>([]) // New state
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [readReceipts, setReadReceipts] = useState<ReadReceipt[]>([])
   const [isReadStatusLoaded, setIsReadStatusLoaded] = useState(false)
+
+  const { isLoading: permsLoading, hasPermission, membership } = useChatPermissions(groupId)
+  const isLeader = membership?.role === "LEADER"
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const stompClientRef = useRef<Client | null>(null)
@@ -114,7 +122,6 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
       onConnect: () => {
         console.log("[WebSocket] 연결 성공")
         setIsConnected(true)
-        setIsLoading(false)
 
         // 메시지 수신 구독
         client.subscribe(`/sub/chat/rooms/${roomId}/messages`, ({ body }) => {
@@ -236,8 +243,15 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     try {
       console.log("[initializeData] 초기화 시작")
 
-      // 1. 먼저 멤버와 메시지 로드
-      await Promise.all([loadChatHistory(), loadChatMembers()])
+      // 1. 멤버와 메시지를 순차적으로 로드 (멤버 먼저)
+      console.log("[initializeData] 채팅 멤버 로딩 시작...")
+      await loadChatMembers()
+      console.log("[initializeData] 채팅 기록 로딩 시작...")
+      await loadChatHistory()
+      console.log("[initializeData] 데이터 로딩 완료.")
+
+      // 모든 데이터 로드 후 로딩 상태 해제
+      setIsLoading(false)
 
       // 2. 읽음 동기화 요청 - 백엔드 컨트롤러에 맞게 수정
       const latestMessageId = messages.length > 0 ? messages[messages.length - 1].messageId : 0
@@ -259,15 +273,37 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
       console.log("[initializeData] 초기화 완료")
     } catch (error) {
       console.error("[initializeData] 초기화 오류:", error)
+      setIsLoading(false) // 에러 발생 시에도 로딩 상태 해제
+    }
+  }
+
+  // 모든 그룹 멤버 불러오기 (초대/강퇴용)
+  const loadAllGroupMembers = async () => {
+    if (!groupId) return
+    const token = getAuthToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/members`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const d = await res.json()
+        const allMbrs: GroupMembers[] = (Array.isArray(d.result?.members) ? d.result.members : []) || (Array.isArray(d.data?.members) ? d.data.members : [])
+        setAllGroupMembers(allMbrs)
+        console.log("[loadAllGroupMembers] 모든 그룹 멤버 로드 완료:", allMbrs)
+      }
+    } catch (error) {
+      console.error("[loadAllGroupMembers] 오류:", error)
     }
   }
 
   useEffect(() => {
     connectWebSocket()
+    loadAllGroupMembers()
     return () => {
       stompClientRef.current?.deactivate()
     }
-  }, [roomId])
+  }, [roomId, groupId])
 
   // 이전 채팅 불러오기
   const loadChatHistory = async () => {
@@ -314,6 +350,82 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
       console.error("[loadChatMembers] 오류:", error)
     }
   }
+
+  const inviteMember = useCallback(async (userId: number) => {
+    if (!groupId) return
+    const token = getAuthToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      })
+      if (res.ok) {
+        console.log(`[inviteMember] 사용자 ${userId} 초대 성공`)
+        loadChatMembers() // Refresh member list
+        loadAllGroupMembers() // Refresh all group members
+        setShowInviteMembers(false) // Close invite list
+      } else {
+        const err = await res.json()
+        console.error("[inviteMember] 초대 실패:", err)
+        alert(`초대 실패: ${err.message || res.statusText}`)
+      }
+    } catch (error) {
+      console.error("[inviteMember] 오류:", error)
+      alert("초대 중 오류가 발생했습니다.")
+    }
+  }, [groupId, roomId, getAuthToken, loadChatMembers, loadAllGroupMembers])
+
+  const kickMember = useCallback(async (userId: number) => {
+    if (!groupId) return
+    const token = getAuthToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants/${userId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        console.log(`[kickMember] 사용자 ${userId} 강퇴 성공`)
+        loadChatMembers() // Refresh member list
+        setShowKickMembers(false) // Close kick list
+      } else {
+        const err = await res.json()
+        console.error("[kickMember] 강퇴 실패:", err)
+        alert(`강퇴 실패: ${err.message || res.statusText}`)
+      }
+    } catch (error) {
+      console.error("[kickMember] 오류:", error)
+      alert("강퇴 중 오류가 발생했습니다.")
+    }
+  }, [groupId, roomId, getAuthToken, loadChatMembers])
+
+  const leaveChat = useCallback(async () => {
+    if (!groupId) return
+    const token = getAuthToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants/me`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      onClose()
+      if (res.ok) {
+        console.log(`[leaveChat] 채팅방 ${roomName} 나가기 성공`)
+      } else {
+        const err = await res.json()
+        console.error("[leaveChat] 채팅방 나가기 실패:", err)
+        alert(`채팅방 나가기 실패: ${err.message || res.statusText}`)
+      }
+    } catch (error) {
+      console.error("[leaveChat] 오류:", error)
+      alert("채팅방 나가기 중 오류가 발생했습니다.")
+    }
+  }, [groupId, roomId, onClose])
 
   const sendMessage = useCallback(() => {
     const client = stompClientRef.current
@@ -414,7 +526,11 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     console.log(`[DEBUG] isReadStatusLoaded: ${isReadStatusLoaded}`)
     console.log(`[DEBUG] readReceipts:`, readReceipts)
     console.log(`[DEBUG] members:`, members)
-    console.log(`[DEBUG] currentUserId: ${currentUserId}`)
+    console.log(`-------------------------------------------------------------------`)
+    console.log(`[DEBUG] roomType:`, roomType)
+    console.log(`[DEBUG] invitePermission:`, hasPermission("INVITE_CHAT_PARTICIPANT"))
+    console.log(`[DEBUG] kickPermission:`, hasPermission("KICK_CHAT_PARTICIPANT"))
+    console.log(`-------------------------------------------------------------------`)
 
     // 읽음 상태가 아직 로드되지 않았으면 로딩 표시
     if (!isReadStatusLoaded) {
@@ -454,27 +570,31 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
   }
 
   if (isLoading) {
-    return <div className={styles.loading}>로딩 중...</div>
+    // return <div className={styles.loading}>로딩 중...</div>
+    console.log("isLoading", isLoading)
   }
 
   return (
     <div className={styles.chatWindow}>
       <div className={styles.chatHeader}>
         <div className={styles.headerLeft}>
-          <h3 className={styles.roomName}>
-            {roomType === "GROUP" ? "🏠" : "💬"} {roomName}
-          </h3>
+          <div className={styles.roomTitleContainer}>
+            <h3 className={styles.roomName}>
+              {roomType === "GROUP" ? "🏠" : "💬"} {roomName}
+            </h3>
+            <span
+              className={styles.memberCount}
+              onClick={() => setShowMembers((s) => !s)}
+            >
+              ({members.length})
+            </span>
+          </div>
           <div className={styles.connectionStatus}>
             <span className={`${styles.statusDot} ${isConnected ? styles.connected : styles.disconnected}`}></span>
             {isConnected ? "연결됨" : "끊김"}
           </div>
         </div>
         <div className={styles.headerRight}>
-          {roomType === "GROUP" && (
-            <button className={styles.membersButton} onClick={() => setShowMembers(!showMembers)}>
-              멤버 ({members.length})
-            </button>
-          )}
           <button className={styles.closeButton} onClick={onClose}>
             ✕
           </button>
@@ -482,19 +602,99 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
       </div>
 
       <div className={styles.chatBody}>
-        {showMembers && (
-          <div className={styles.membersSidebar}>
+        <div className={`${styles.membersSidebar} ${showMembers ? styles.open : ""}`}>
+          <div className={styles.membersHeader}>
             <h4>참여자 목록</h4>
-            <div className={styles.membersList}>
-              {members.map((m) => (
-                <div className={styles.memberItem} key={m.userId}>
-                  <img src={m.profileImageUrl || "/placeholder.svg"} alt="avatar" className={styles.memberAvatar} />
-                  <div className={styles.memberName}>{m.userName}</div>
-                </div>
-              ))}
-            </div>
+            <button className={styles.closeMembersButton} onClick={() => setShowMembers(false)}>
+              ✕
+            </button>
           </div>
-        )}
+          <div className={styles.membersList}>
+            {members.map(m => (
+              <div className={styles.memberItem} key={m.userId}>
+                <img src={m.profileUrl || "/placeholder.svg"} className={styles.memberAvatar} />
+                <div className={styles.memberName}>{m.name}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.actionButtons}>
+            {roomType === "GROUP" && (
+              <>
+                {!permsLoading && hasPermission("INVITE_CHAT_PARTICIPANT") && (
+                  <button className={styles.actionButton} onClick={() => setShowInviteMembers(true)}>초대하기</button>
+                )}
+                {!permsLoading && hasPermission("KICK_CHAT_PARTICIPANT") && (
+                  <button className={styles.actionButton} onClick={() => setShowKickMembers(true)}>강퇴하기</button>
+                )}
+              </>
+            )}
+            {/* 그룹 리더가 아닐 때 또는 다이렉트일 때만 나가기 */}
+            {(roomType === "DIRECT" || (roomType === "GROUP" && !isLeader)) && (
+              <button className={styles.actionButton} onClick={leaveChat}>나가기</button>
+            )}
+          </div>
+
+          {showInviteMembers && (
+            <div className={styles.overlayList}>
+              <h4>초대할 멤버 선택</h4>
+              {(() => {
+                const candidates = allGroupMembers.filter((member) =>
+                  member.id !== currentUserId &&
+                  !members.some((chatMember) => chatMember.userId === member.id)
+                )
+                return candidates.length > 0 ? (
+                  <div className={styles.membersList}>
+                    {candidates.map((member) => (
+                      <div className={styles.memberItem} key={member.id}>
+                        <img src={member.profileImageUrl || "/placeholder.svg"} className={styles.memberAvatar} />
+                        <div className={styles.memberName}>{member.name}</div>
+                        <button className={styles.inviteKickButton} onClick={() => inviteMember(member.id)}>
+                          초대
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.emptyMessage}>모든 멤버가 참여 중입니다.</div>
+                )
+              })()}
+              <button className={styles.closeOverlayButton} onClick={() => setShowInviteMembers(false)}>
+                닫기
+              </button>
+            </div>
+          )}
+
+          {showKickMembers && (
+            <div className={styles.overlayList}>
+              <h4>강퇴할 멤버 선택</h4>
+              {(() => {
+                const kickCandidates = members.filter((member) => member.userId !== currentUserId)
+                return kickCandidates.length > 0 ? (
+                  <div className={styles.membersList}>
+                    {kickCandidates.map((member) => (
+                      <div className={styles.memberItem} key={member.userId}>
+                        <img src={member.profileUrl || "/placeholder.svg"} className={styles.memberAvatar} />
+                        <div className={styles.memberName}>{member.name}</div>
+                        <button
+                          className={styles.inviteKickButton}
+                          onClick={() => kickMember(member.userId)}
+                        >
+                          강퇴
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.emptyMessage}>채팅에 참여 중인 멤버가 없습니다.</div>
+                )
+              })()}
+              <button className={styles.closeOverlayButton} onClick={() => setShowKickMembers(false)}>
+                닫기
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className={styles.messagesContainer}>
           <div className={styles.messagesList}>
@@ -506,7 +706,11 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
             ) : (
               messages.map((msg) => {
                 const isMe = msg.senderId === currentUserId
-                const senderName = `사용자 ${msg.senderId}` // 이름 대신 사용자 ID 표시
+                const sender = members.find((m) => m.userId === msg.senderId)
+                const senderName = sender?.name
+                const senderProfileUrl = sender?.profileUrl || "/placeholder.svg"
+
+                console.log("sender: " + sender + ", senderName: " + senderName + ", profile: " + senderProfileUrl);
 
                 return (
                   <div
@@ -516,8 +720,9 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
                       markAsRead(msg.messageId)
                     }}
                   >
+                    {!isMe && <img src={senderProfileUrl} alt={senderName || "avatar"} className={styles.senderAvatar} />}
                     <div className={styles.messageContent}>
-                      <div className={styles.senderName}>{senderName}</div>
+                      {!isMe && senderName && <div className={styles.senderName}>{senderName}</div>}
                       <div className={styles.messageBubble}>
                         <span className={styles.messageText}>{msg.content}</span>
                       </div>
@@ -568,7 +773,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
           </div>
         </div>
       </div>
-    </div>
+    </div >
   )
 }
 

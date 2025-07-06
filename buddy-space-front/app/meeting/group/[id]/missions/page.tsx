@@ -428,7 +428,6 @@ export default function MissionsPage() {
           setPostModal(false)
           await loadAllPosts()
         }
-        return
       }
 
       const missionId = missionForPost
@@ -594,7 +593,7 @@ export default function MissionsPage() {
                       loadPostDetail((p as any).missionId, p.missionPostId)
                     }}
                   >
-                    <div>{p.missionTitle}</div>
+                    <div>{p.missionTitle} - {p.authorName}</div>
                     <div className={styles.listMeta}>
                       {p.createdAt ? format(new Date(p.createdAt), 'yyyy.MM.dd') : ''}
                     </div>

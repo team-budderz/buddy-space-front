@@ -6,7 +6,7 @@
 
 .photoAlbumContainer {
   display: flex;
-  min-height: auto;
+  min-height: 550px;
   background: white;
   border-radius: 12px;
   margin: 20px;
