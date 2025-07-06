@@ -581,7 +581,7 @@
   word-break: break-word;
 }
 
-.postContent img {
+.postContent img, .postContent video {
   max-width: 50%;
   height: auto;
   border-radius: 12px;

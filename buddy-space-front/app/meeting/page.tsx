@@ -126,7 +126,7 @@ export default function MeetingPage() {
             }
         } catch (err: any) {
             console.error("참여 요청 실패", err)
-            alert("참여 요청 중 오류가 발생했습니다.")
+            alert(err.response?.data?.message || "참여 요청 중 오류가 발생했습니다.")
         }
     }
 

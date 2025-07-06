@@ -80,7 +80,7 @@ export default function SettingPage() {
     const [currentGroupData, setCurrentGroupData] = useState<GroupData | null>(null)
     const [currentMembers, setCurrentMembers] = useState<Member[]>([])
     const [currentPermissions, setCurrentPermissions] = useState<Permission[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(false)
     const [toast, setToast] = useState<ToastState>({ show: false, message: "", type: "success" })
 
     const [showGroupInfoModal, setShowGroupInfoModal] = useState(false)
@@ -122,8 +122,12 @@ export default function SettingPage() {
     }
 
     useEffect(() => {
-        initializeSettings()
-    }, [groupId])
+        if (!permsLoading && groupId) {
+            initializeSettings();
+        }
+    }, [permsLoading, groupId]);
+
+
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -139,10 +143,15 @@ export default function SettingPage() {
     const initializeSettings = async () => {
         setIsLoading(true)
         try {
-            await refreshPermissions()
-            if (!isLeader()) return
-            const res = await api.get(`/groups/${groupId}`)
-            setCurrentGroupData(res.data.result)
+            if (!isLeader()) {
+                showToast("리더만 설정 페이지에 접근할 수 있습니다.", "error");
+                setCurrentGroupData(null);
+                return;
+            }
+
+            const res = await api.get(`/groups/${groupId}`);
+            setCurrentGroupData(res.data.result);
+
         } catch (err: any) {
             console.error("설정 초기화 실패:", err)
             showToast("설정 정보를 불러오는데 실패했습니다.", "error")
@@ -182,7 +191,7 @@ export default function SettingPage() {
         return `${year}년 ${month}월 ${day}일 가입`
     }
 
-    
+
     const openGroupInfoModal = () => {
         if (!currentGroupData) return
         setGroupName(currentGroupData.name || "")
@@ -1450,11 +1459,13 @@ export default function SettingPage() {
         }
     }
 
-    if ((permsLoading || isLoading) && !currentGroupData) {
+    if (permsLoading || isLoading) {
+        const message = permsLoading
+        ? "권한 정보를 불러오는 중..."
+        : "설정 정보를 불러오는 중...";
         return (
-            <div className={styles.settingsLoadingOverlay}>
-                <div className={styles.settingsLoadingSpinner}></div>
-                <p>설정 정보를 불러오는 중...</p>
+            <div>
+                <p>{message}</p>
             </div>
         )
     }
