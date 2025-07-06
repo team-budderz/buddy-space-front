@@ -98,7 +98,7 @@ export default function SettingPage() {
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const { isLoading: permsLoading, isLeader, refreshPermissions } = useGroupPermissions()
+    const { isLoading: permsLoading, isLeader, hasPermission, refreshPermissions } = useGroupPermissions()
 
     // 채팅 동기화 
     const fetchChatRooms = async (): Promise<ChatRoom[]> => {
@@ -425,7 +425,7 @@ export default function SettingPage() {
     };
 
     const openInviteLinkModal = async () => {
-        if (!isLeader()) {
+        if (!hasPermission("CREATE_INVITE_LINK")) {
             showToast("초대 링크를 생성할 권한이 없습니다.", "error")
             return
         }
