@@ -188,25 +188,18 @@ export default function ProfilePage() {
     try {
       setIsLoading(true)
 
-      const formData = new FormData()
-      formData.append(
-        "request",
-        new Blob(
-          [
-            JSON.stringify({
-              address: editAddress || null,
-              phone: editPhone || null,
-              profileAttachmentId: imageAction === "keep" ? userInfo?.profileAttachmentId : null,
-            }),
-          ],
-          { type: "application/json" },
-        )
-      )
-      if (imageAction === "change" && selectedFile) {
-        formData.append("profileImage", selectedFile)
+      const body = {
+        address: editAddress || null,
+        phone: editPhone || null,
+        imageUrl:
+          imageAction === "keep"
+            ? userInfo?.profileImageUrl
+            : imageAction === "remove"
+              ? null
+              : "이미지 업로드 후 URL" 
       }
 
-      await api.patch("/users", formData)
+      await api.patch("/users", body)
 
       showToast("정보가 성공적으로 업데이트되었습니다.")
       setIsEditing(false)
@@ -222,7 +215,6 @@ export default function ProfilePage() {
       const status = error.response?.status
       const errorMessage = error.response?.data?.message || "정보 업데이트에 실패했습니다."
 
-      // 401이어도 로그인 이동 없이 메시지만 표시
       if (status === 401) {
         showToast("비밀번호 인증이 필요합니다. 다시 시도해주세요.", "error")
       } else {

@@ -8,17 +8,10 @@ export async function reissueToken() {
   try {
     console.debug("[Token] 재발급 요청 시작");
 
-    const email = localStorage.getItem("userEmail");
-    const password = localStorage.getItem("userPassword");
-
-    if (!email || !password) {
-      throw new Error("저장된 로그인 정보가 없습니다.");
-    }
-
     const res = await axios.post(
       `${baseURL}/token/refresh`,
-      { email, password },
-      { withCredentials: true }
+      {}, // body 없이
+      { withCredentials: true } 
     );
 
     console.debug("[Token] 재발급 응답:", res.data);
