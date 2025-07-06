@@ -69,7 +69,6 @@ api.interceptors.response.use(
 
         // 새 토큰 저장
         localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", refreshToken);
 
         console.debug("[API] 401 재시도: 새 accessToken 적용 후 재요청");
         original.headers.Authorization = `Bearer ${accessToken}`;
