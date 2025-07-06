@@ -1,42 +1,12 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense } from "react";
+import OAuth2RedirectPage from "./oauth2redirectpage";
 
-export default function OAuth2RedirectPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    const accessToken = searchParams.get("accessToken")
-    const refreshToken = searchParams.get("refreshToken")
-
-    if (accessToken && refreshToken) {
-      localStorage.setItem("accessToken", accessToken)
-      localStorage.setItem("refreshToken", refreshToken)
-
-      // You might want to fetch user info here to store it as well
-      // For example, fetch user's email and store it
-
-      router.push("/meeting")
-    } else {
-      // Handle error case where tokens are not present
-      alert("로그인에 실패하였습니다. 다시 시도해주세요.")
-      router.push("/login")
-    }
-  }, [router, searchParams])
-
+export default function Page() {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        fontSize: "20px",
-      }}
-    >
-      로그인 중입니다...
-    </div>
-  )
+    <Suspense fallback={<p>로그인 처리 중…</p>}>
+      <OAuth2RedirectPage />
+    </Suspense>
+  );
 }

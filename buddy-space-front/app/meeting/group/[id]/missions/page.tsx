@@ -24,7 +24,7 @@ const ModalPortal: React.FC<ModalPortalProps> = ({ children, isOpen }) => {
 }
 
 import { useParams } from "next/navigation"
-import { useGroupPermissions } from "../layout"
+import { useGroupPermissions } from "@/app/components/hooks/usegrouppermissiont"
 import api from "@/app/api"
 import styles from "./missionregister.module.css"
 

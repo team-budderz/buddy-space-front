@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import styles from "../../posts.module.css"
 import api from "@/app/api"
-import { useGroupPermissions } from "../../../layout"
+import { useGroupPermissions } from "@/app/components/hooks/usegrouppermissiont";
 import { createPortal } from "react-dom"
 
 interface AttachedFile {

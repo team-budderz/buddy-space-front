@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { useGroupPermissions } from "../layout"
-import styles from "./setting.module.css"
-import api from "@/app/api"
-import { getAuthHeaders } from "@/app/api/auth"
-import { createPortal } from "react-dom"
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useGroupPermissions } from "@/app/components/hooks/usegrouppermissiont";
+import styles from "./setting.module.css";
+import api from "@/app/api";
+import { getAuthHeaders } from "@/app/api/auth";
+import { createPortal } from "react-dom";
 
 function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
     const [mounted, setMounted] = useState(false)
@@ -98,7 +98,7 @@ export default function SettingPage() {
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const { isLoading: permsLoading, isLeader, refreshPermissions } = useGroupPermissions()
+    const { isLoading: permsLoading, isLeader, hasPermission, refreshPermissions } = useGroupPermissions()
 
     // 채팅 동기화 
     const fetchChatRooms = async (): Promise<ChatRoom[]> => {
