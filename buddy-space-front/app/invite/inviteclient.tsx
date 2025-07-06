@@ -206,7 +206,7 @@ export default function InvitePage() {
             <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={goToLogin}>
               로그인하기
             </button>
-            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => router.push("/")}>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => router.push("/meeting")}>
               메인으로 돌아가기
             </button>
           </>
@@ -218,7 +218,7 @@ export default function InvitePage() {
             <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={joinGroup} disabled={isProcessing}>
               {isProcessing ? "참여 중..." : "모임 참여하기"}
             </button>
-            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => router.push("/")}>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => router.push("/meeting")}>
               취소
             </button>
           </>
@@ -233,7 +233,7 @@ export default function InvitePage() {
             >
               모임으로 이동
             </button>
-            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => router.push("/")}>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => router.push("/meeting")}>
               메인으로 이동
             </button>
           </>
@@ -245,7 +245,7 @@ export default function InvitePage() {
             <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => window.location.reload()}>
               다시 시도
             </button>
-            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => router.push("/")}>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => router.push("/meeting")}>
               메인으로 돌아가기
             </button>
           </>
