@@ -177,8 +177,15 @@ export default function ProfilePage() {
       showToast("주소 검색 서비스를 불러올 수 없습니다.", "error")
     }
   }
-
   const saveUserInfo = async (skipVerify = false) => {
+    // ────── 디버깅 로그 추가 ──────
+    console.log("▶ saveUserInfo 호출:", {
+      skipVerify,
+      isPasswordVerified,
+      pendingAction,
+    });
+    // ─────────────────────────────
+
     if (!skipVerify && !isPasswordVerified) {
       setPendingAction("save");
       setShowPasswordAuthModal(true);
@@ -204,7 +211,9 @@ export default function ProfilePage() {
         form.append("profileImage", selectedFile);
       }
 
-      await api.patch("/users", form);
+      const response = await api.patch("/users", form);
+
+      console.log("✅ saveUserInfo 성공 응답:", response.status, response.data);  // 성공 로그
 
       showToast("정보가 성공적으로 업데이트되었습니다.", "success");
       setIsEditing(false);
@@ -215,6 +224,8 @@ export default function ProfilePage() {
       await fetchUserInfo();
     } catch (error: any) {
       const status = error.response?.status;
+      console.error("❌ saveUserInfo 에러:", status, error.response?.data);
+
       if (status === 401) {
         showToast("비밀번호 인증이 필요합니다.", "error");
         setPendingAction("save");
