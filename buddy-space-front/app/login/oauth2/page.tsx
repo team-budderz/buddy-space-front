@@ -1,42 +1,15 @@
-"use client"
+export const dynamic = 'force-dynamic';
 
-import { useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import dynamicImport from 'next/dynamic'; 
 
-export default function OAuth2RedirectPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+const OAuth2RedirectPage = dynamicImport(
+  () => import('./oauth2redirectpage'),
+  {
+    ssr: false,
+    loading: () => <p>로그인 처리 중…</p>,
+  }
+);
 
-  useEffect(() => {
-    const accessToken = searchParams.get("accessToken")
-    const refreshToken = searchParams.get("refreshToken")
-
-    if (accessToken && refreshToken) {
-      localStorage.setItem("accessToken", accessToken)
-      localStorage.setItem("refreshToken", refreshToken)
-
-      // You might want to fetch user info here to store it as well
-      // For example, fetch user's email and store it
-
-      router.push("/meeting")
-    } else {
-      // Handle error case where tokens are not present
-      alert("로그인에 실패하였습니다. 다시 시도해주세요.")
-      router.push("/login")
-    }
-  }, [router, searchParams])
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        fontSize: "20px",
-      }}
-    >
-      로그인 중입니다...
-    </div>
-  )
+export default function Page() {
+  return <OAuth2RedirectPage />;
 }
