@@ -1,9 +1,10 @@
-'use client'
+'use client';
+export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import api from '@/app/api'
-import styles from './search.module.css'
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import api from '@/app/api';
+import styles from './search.module.css';
 
 const groupTypeMap: Record<string,string> = {
   ONLINE: '온라인',

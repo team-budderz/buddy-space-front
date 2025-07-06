@@ -1,11 +1,12 @@
-"use client"
+"use client";
 
-import type React from "react"
+export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import styles from "./invite.module.css"
-import api from "@/app/api"
+import type React from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import styles from "./invite.module.css";
+import api from "@/app/api";
 
 interface GroupInfo {
   groupId: number
