@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import styles from "./photos.module.css"
 import { createPortal } from "react-dom"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!
 
 function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
   const [mounted, setMounted] = useState(false)
@@ -74,7 +74,7 @@ export default function PhotosPage() {
       setIsLoading(true)
       setError(null)
 
-      const response = await fetchWithAuth(`/groups/${groupId}/albums`)
+      const response = await fetchWithAuth(`/groups/${groupId}/albums`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const data = await response.json()
       if (data.result) setAllAttachments(data.result)

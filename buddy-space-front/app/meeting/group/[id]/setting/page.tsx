@@ -138,18 +138,23 @@ export default function SettingPage() {
 
     const initializeSettings = async () => {
         setIsLoading(true)
+        let data: GroupData | null = null
+
         try {
             await refreshPermissions()
-            if (!isLeader()) return
-            const res = await api.get(`/groups/${groupId}`)
-            setCurrentGroupData(res.data.result)
-        } catch (err: any) {
+            if (isLeader()) {
+                const res = await api.get(`/groups/${groupId}`)
+                data = res.data.result
+            }
+        } catch (err) {
             console.error("설정 초기화 실패:", err)
             showToast("설정 정보를 불러오는데 실패했습니다.", "error")
         } finally {
             setIsLoading(false)
+            setCurrentGroupData(data)
         }
     }
+
 
     const showToast = (message: string, type: ToastState["type"] = "success") => {
         setToast({ show: true, message, type })
@@ -182,7 +187,7 @@ export default function SettingPage() {
         return `${year}년 ${month}월 ${day}일 가입`
     }
 
-    
+
     const openGroupInfoModal = () => {
         if (!currentGroupData) return
         setGroupName(currentGroupData.name || "")

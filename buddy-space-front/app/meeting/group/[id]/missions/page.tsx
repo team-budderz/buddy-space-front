@@ -300,18 +300,12 @@ export default function MissionsPage() {
   }
 
   const handleMissionSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
+    e.preventDefault();
     try {
-      const headers = await getAuthHeaders()
+      const headers = await getAuthHeaders();
 
       if (editingMissionId) {
-        const mission = missions.find((m) => m.missionId === editingMissionId)!
-        if (!canEditMission(mission)) {
-          alert("수정 권한이 없습니다.")
-          return
-        }
-
+        //수정
         await api.patch(
           `/groups/${groupId}/missions/${editingMissionId}`,
           {
@@ -319,36 +313,41 @@ export default function MissionsPage() {
             description: missionForm.description,
           },
           { headers },
-        )
-      } else {
-        if (!canCreateMission()) {
-          alert("미션 생성 권한이 없습니다.")
-          return
-        }
-
-        await api.post(
-          `/groups/${groupId}/missions`,
-          {
-            title: missionForm.title,
-            description: missionForm.description,
-            startedAt: missionForm.startedAt,
-            endedAt: missionForm.endedAt,
-            frequency: missionForm.frequency,
-          },
-          { headers },
-        )
+        );
+        setMissionForm({ title: "", description: "", startedAt: "", endedAt: "", frequency: 1 });
+        setEditingMissionId(null);
+        setShowMissionModal(false);
+        await loadMissions();
+        alert("미션이 수정되었습니다.");
+        return;   
       }
 
-      setMissionForm({ title: "", description: "", startedAt: "", endedAt: "", frequency: 1 })
-      setEditingMissionId(null)
-      setShowMissionModal(false)
-      await loadMissions()
-      alert(editingMissionId ? "미션이 수정되었습니다." : "미션이 생성되었습니다.")
+      //생성
+      if (!canCreateMission()) {
+        alert("미션 생성 권한이 없습니다.");
+        return;
+      }
+      await api.post(
+        `/groups/${groupId}/missions`,
+        {
+          title: missionForm.title,
+          description: missionForm.description,
+          startedAt: missionForm.startedAt,
+          endedAt: missionForm.endedAt,
+          frequency: missionForm.frequency,
+        },
+        { headers },
+      );
+      setMissionForm({ title: "", description: "", startedAt: "", endedAt: "", frequency: 1 });
+      setShowMissionModal(false);
+      await loadMissions();
+      alert("미션이 생성되었습니다.");
     } catch (err) {
-      console.error("Failed to save mission", err)
-      alert("미션 저장에 실패했습니다.")
+      console.error("Failed to save mission", err);
+      alert("미션 저장에 실패했습니다.");
     }
-  }
+  };
+
 
   function startEditMission(m: Mission) {
     if (!canEditMission(m)) {

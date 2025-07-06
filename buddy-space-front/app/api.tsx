@@ -8,7 +8,7 @@ export async function reissueToken() {
   try {
     console.debug("[Token] 재발급 요청 시작");
 
-     // 쿠키 기반 재발급 요청이므로 body 없이 요청
+    // 쿠키 기반 재발급 요청이므로 body 없이 요청
     const res = await axios.post(
       `${baseURL}/token/refresh`,
       null,
@@ -30,6 +30,9 @@ const api = axios.create({
 // ————— 요청 인터셉터 —————
 api.interceptors.request.use(
   (config) => {
+    if (config.data instanceof FormData) {
+      delete config.headers?.["Content-Type"];
+    }
     console.debug("[API → ]", config.method?.toUpperCase(), config.url, "헤더:", config.headers);
     const raw = localStorage.getItem("accessToken") || "";
     const token = raw.replace(/^"|"$/g, "").replace(/^Bearer\s*/, "");
