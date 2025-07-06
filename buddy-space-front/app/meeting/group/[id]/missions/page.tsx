@@ -47,11 +47,11 @@ interface Mission {
   frequency: number
   progressDay: number
   authorName: string
-  authorId: number;
+  authorId: number; 
 }
 
 interface MissionDetail {
-  id: number
+  id: number 
   title: string
   description: string
   startedAt: string
@@ -59,7 +59,7 @@ interface MissionDetail {
   frequency: number
   authorName: string
   authorImageUrl: string
-  createdAt: string
+  createdAt: string 
 }
 
 interface MissionPost {
@@ -163,7 +163,7 @@ export default function MissionsPage() {
 
   const currentUserId = getCurrentUserId()
   const currentUserRole = getCurrentUserRole()
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null) 
   const [missionForPost, setMissionForPost] = useState<number | null>(null)
 
   useEffect(() => {
@@ -272,9 +272,9 @@ export default function MissionsPage() {
           const postsWithMissionId = response.data.result.map((p: any) => ({
             missionPostId: p.missionPostId,
             contents: p.contents,
-            authorId: p.authorId,
-            authorName: p.authorName,
-            missionId: m.missionId,
+            authorId: p.authorId, 
+            authorName: p.authorName, 
+            missionId: m.missionId, 
             createdAt: p.createdAt,
             missionTitle: m.title,
           }))
@@ -300,12 +300,18 @@ export default function MissionsPage() {
   }
 
   const handleMissionSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
+
     try {
-      const headers = await getAuthHeaders();
+      const headers = await getAuthHeaders()
 
       if (editingMissionId) {
-        //수정
+        const mission = missions.find((m) => m.missionId === editingMissionId)!
+        if (!canEditMission(mission)) {
+          alert("수정 권한이 없습니다.")
+          return
+        }
+
         await api.patch(
           `/groups/${groupId}/missions/${editingMissionId}`,
           {
@@ -313,41 +319,36 @@ export default function MissionsPage() {
             description: missionForm.description,
           },
           { headers },
-        );
-        setMissionForm({ title: "", description: "", startedAt: "", endedAt: "", frequency: 1 });
-        setEditingMissionId(null);
-        setShowMissionModal(false);
-        await loadMissions();
-        alert("미션이 수정되었습니다.");
-        return;   
+        )
+      } else {
+        if (!canCreateMission()) {
+          alert("미션 생성 권한이 없습니다.")
+          return
+        }
+
+        await api.post(
+          `/groups/${groupId}/missions`,
+          {
+            title: missionForm.title,
+            description: missionForm.description,
+            startedAt: missionForm.startedAt,
+            endedAt: missionForm.endedAt,
+            frequency: missionForm.frequency,
+          },
+          { headers },
+        )
       }
 
-      //생성
-      if (!canCreateMission()) {
-        alert("미션 생성 권한이 없습니다.");
-        return;
-      }
-      await api.post(
-        `/groups/${groupId}/missions`,
-        {
-          title: missionForm.title,
-          description: missionForm.description,
-          startedAt: missionForm.startedAt,
-          endedAt: missionForm.endedAt,
-          frequency: missionForm.frequency,
-        },
-        { headers },
-      );
-      setMissionForm({ title: "", description: "", startedAt: "", endedAt: "", frequency: 1 });
-      setShowMissionModal(false);
-      await loadMissions();
-      alert("미션이 생성되었습니다.");
+      setMissionForm({ title: "", description: "", startedAt: "", endedAt: "", frequency: 1 })
+      setEditingMissionId(null)
+      setShowMissionModal(false)
+      await loadMissions()
+      alert(editingMissionId ? "미션이 수정되었습니다." : "미션이 생성되었습니다.")
     } catch (err) {
-      console.error("Failed to save mission", err);
-      alert("미션 저장에 실패했습니다.");
+      console.error("Failed to save mission", err)
+      alert("미션 저장에 실패했습니다.")
     }
-  };
-
+  }
 
   function startEditMission(m: Mission) {
     if (!canEditMission(m)) {
@@ -401,61 +402,63 @@ export default function MissionsPage() {
     setPostModal(true)
   }
 
-  async function handlePostSubmit(e: FormEvent) {
-    e.preventDefault()
+ const handlePostSubmit = async (e: FormEvent) => {
+  e.preventDefault()
 
-    try {
-      const headers = await getAuthHeaders()
+  try {
+    const headers = await getAuthHeaders()
 
-      if (editingPost) {
-        if (!canEditPost(editingPost)) {
-          alert("수정 권한이 없습니다.")
-          return
-        }
-
-        const response = await api.patch(
-          `/groups/${groupId}/missions/${(editingPost as any).missionId}/posts/${editingPost.missionPostId}`,
-          { contents: postForm.contents },
-          { headers },
-        )
-
-        if (response.status === 200) {
-          alert("인증이 수정되었습니다.")
-          setPostForm({ contents: "" })
-          setEditingPost(null)
-          setPostModal(false)
-          await loadAllPosts()
-        }
-      }
-
-      const missionId = missionForPost
-      if (!missionId) {
-        alert("미션을 먼저 선택해주세요.")
+    if (editingPost) {
+      if (!canEditPost(editingPost)) {
+        alert("수정 권한이 없습니다.")
         return
       }
 
-      if (!canCreatePost()) {
-        alert("인증 생성 권한이 없습니다.")
-        return
-      }
-
-      const response = await api.post(
-        `/groups/${groupId}/missions/${missionForPost}/posts`,
+      const response = await api.patch(
+        `/groups/${groupId}/missions/${editingPost.missionId}/posts/${editingPost.missionPostId}`,
         { contents: postForm.contents },
         { headers },
       )
 
       if (response.status === 200) {
-        alert("인증이 등록되었습니다.")
+        alert("인증이 수정되었습니다.")
         setPostForm({ contents: "" })
+        setEditingPost(null)
         setPostModal(false)
         await loadAllPosts()
+
+        return 
       }
-    } catch (err) {
-      console.error("Failed to save post", err)
-      alert("인증 저장에 실패했습니다.")
     }
+
+    const missionId = missionForPost
+    if (!missionId) {
+      alert("미션을 먼저 선택해주세요.")
+      return
+    }
+
+    if (!canCreatePost()) {
+      alert("인증 생성 권한이 없습니다.")
+      return
+    }
+
+    const response = await api.post(
+      `/groups/${groupId}/missions/${missionForPost}/posts`,
+      { contents: postForm.contents },
+      { headers },
+    )
+
+    if (response.status === 200) {
+      alert("인증이 등록되었습니다.")
+      setPostForm({ contents: "" })
+      setPostModal(false)
+      await loadAllPosts()
+    }
+  } catch (err) {
+    console.error("Failed to save post", err)
+    alert("인증 저장에 실패했습니다.")
   }
+}
 
   async function deletePost(p: MissionPost) {
     if (!canDeletePost(p)) {
@@ -483,8 +486,8 @@ export default function MissionsPage() {
       if (response.status === 200 && response.data.result) {
         const dto = response.data.result
         setDetailPost({
-          missionPostId: postId,
-          missionId: missionId,
+          missionPostId: postId,      
+          missionId: missionId,      
           contents: dto.contents,
           missionTitle: dto.missionTitle,
           authorName: dto.authorName,
@@ -595,7 +598,7 @@ export default function MissionsPage() {
                     <div className={styles.listMeta}>
                       {p.createdAt ? format(new Date(p.createdAt), 'yyyy.MM.dd') : ''}
                     </div>
-
+                    
                   </div>
                   <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
                     {canEditPost(p) && (
@@ -691,29 +694,29 @@ export default function MissionsPage() {
           <div className={styles.modalOverlay} onClick={() => setDetailMission(null)}>
             <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
               <div className={styles.detailHeader}>
-                <div className={styles.authorInfo}>
-                  <img
-                    src={detailMission.authorImageUrl || "/placeholder.svg"}
-                    alt="avatar"
-                    className={styles.avatar}
-                  />
-                  <div>
-                    <div className={styles.authorName}>{detailMission.authorName}</div>
-                    <div className={styles.postDate}>
-                      {format(new Date(detailMission.createdAt), 'yyyy년 MM월 dd일')}
-                    </div>
+              <div className={styles.authorInfo}>
+                <img
+                  src={detailMission.authorImageUrl || "/placeholder.svg"}
+                  alt="avatar"
+                  className={styles.avatar}
+                />
+                <div>
+                  <div className={styles.authorName}>{detailMission.authorName}</div>
+                  <div className={styles.postDate}>
+                    {format(new Date(detailMission.createdAt), 'yyyy년 MM월 dd일')}
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className={styles.detailBody}>
-                <h3>기간 </h3>
-                <div className={styles.detailDates}>
-                  {detailMission.startedAt} ~ {detailMission.endedAt}
-                </div>
-                <h3 className={styles.detailTitle}>미션 : {detailMission.title}</h3>
-                <div className={styles.detailContent}>{detailMission.description}</div>
+            <div className={styles.detailBody}>
+              <h3>기간 </h3>
+              <div className={styles.detailDates}>
+                {detailMission.startedAt} ~ {detailMission.endedAt}
               </div>
+              <h3 className={styles.detailTitle}>미션 : {detailMission.title}</h3>
+              <div className={styles.detailContent}>{detailMission.description}</div>
+            </div>
               <div className={styles.modalActions}>
                 <button
                   className={styles.cancelButton}
@@ -729,7 +732,7 @@ export default function MissionsPage() {
                     className={styles.submitButton}
                     onClick={(e) => {
                       e.stopPropagation()
-                      setMissionForPost(detailMission.id)
+                      setMissionForPost(detailMission.id) 
                       setPostModal(true)
                     }}
                   >
@@ -757,25 +760,25 @@ export default function MissionsPage() {
           <div className={styles.modalOverlay} onClick={() => setDetailPost(null)}>
             <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
               <div className={styles.detailHeader}>
-                <div className={styles.authorInfo}>
-                  <img
-                    src={detailPost.authorImageUrl || "/placeholder.svg"}
-                    alt="avatar"
-                    className={styles.avatar}
-                  />
-                  <div>
-                    <div className={styles.authorName}>{detailPost.authorName}</div>
-                    <div className={styles.postDate}>
-                      {format(new Date(detailPost.createdAt), 'yyyy년 MM월 dd일')}
-                    </div>
+              <div className={styles.authorInfo}>
+                <img
+                  src={detailPost.authorImageUrl || "/placeholder.svg"}
+                  alt="avatar"
+                  className={styles.avatar}
+                />
+                <div>
+                  <div className={styles.authorName}>{detailPost.authorName}</div>
+                  <div className={styles.postDate}>
+                    {format(new Date(detailPost.createdAt), 'yyyy년 MM월 dd일')}
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className={styles.detailBody}>
-                <h3 className={styles.detailTitle}>인증 내용</h3>
-                <div className={styles.detailContent}>{detailPost.contents}</div>
-              </div>
+            <div className={styles.detailBody}>
+              <h3 className={styles.detailTitle}>인증 내용</h3>
+              <div className={styles.detailContent}>{detailPost.contents}</div>
+            </div>
               <div className={styles.modalActions}>
                 <button className={styles.cancelButton} onClick={() => setDetailPost(null)}>
                   닫기

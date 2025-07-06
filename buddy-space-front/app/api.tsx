@@ -8,12 +8,19 @@ export async function reissueToken() {
   try {
     console.debug("[Token] 재발급 요청 시작");
 
-    // 쿠키 기반 재발급 요청이므로 body 없이 요청
+    const email = localStorage.getItem("userEmail");
+    const password = localStorage.getItem("userPassword");
+
+    if (!email || !password) {
+      throw new Error("저장된 로그인 정보가 없습니다.");
+    }
+
     const res = await axios.post(
       `${baseURL}/token/refresh`,
-      null,
+      { email, password },
       { withCredentials: true }
     );
+
     console.debug("[Token] 재발급 응답:", res.data);
     return res.data.result; // { accessToken }
   } catch (e: any) {
@@ -21,6 +28,7 @@ export async function reissueToken() {
     throw e;
   }
 }
+
 
 const api = axios.create({
   baseURL,
