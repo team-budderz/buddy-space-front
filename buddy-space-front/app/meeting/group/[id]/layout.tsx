@@ -7,7 +7,17 @@ import Link from "next/link"
 import styles from "./grouplayout.module.css"
 import { GroupPermissionsProvider, useGroupPermissions } from "@/app/components/hooks/usegrouppermissiont"
 
+// ✅ 1단계: 최상위에서 Provider로 감싸기
 export default function GroupLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <GroupPermissionsProvider>
+      <GroupLayoutContent>{children}</GroupLayoutContent>
+    </GroupPermissionsProvider>
+  )
+}
+
+// ✅ 2단계: 내부에서 useGroupPermissions() 호출 (Provider 안쪽)
+function GroupLayoutContent({ children }: { children: React.ReactNode }) {
   const params = useParams()
   const pathname = usePathname()
   const router = useRouter()
@@ -56,41 +66,37 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <GroupPermissionsProvider>
-      <main className={styles.main}>
-        <nav className={styles.groupNav}>
-          {tabs.map((tab) => {
-            if (tab.requiresLeader && !isLeader()) {
-              return null
-            }
+    <main className={styles.main}>
+      <nav className={styles.groupNav}>
+        {tabs.map((tab) => {
+          if (tab.requiresLeader && !isLeader()) return null
 
-            const href = `/meeting/group/${groupId}${tab.path ? `/${tab.path}` : ""}`
-            const isActive = currentTab === tab.path
+          const href = `/meeting/group/${groupId}${tab.path ? `/${tab.path}` : ""}`
+          const isActive = currentTab === tab.path
 
-            return (
-              <Link
-                key={tab.path || "main"}
-                href={href}
-                className={`${styles.navLink} ${isActive ? styles.active : ""}`}
-              >
-                <span className={styles.tabIcon}>{tab.icon}</span>
-                <span className={styles.tabText}>{tab.name}</span>
-              </Link>
-            )
-          })}
-        </nav>
+          return (
+            <Link
+              key={tab.path || "main"}
+              href={href}
+              className={`${styles.navLink} ${isActive ? styles.active : ""}`}
+            >
+              <span className={styles.tabIcon}>{tab.icon}</span>
+              <span className={styles.tabText}>{tab.name}</span>
+            </Link>
+          )
+        })}
+      </nav>
 
-        <div className={styles.groupContent}>
-          {isLoading ? (
-            <div className={styles.loadingContainer}>
-              <div className={styles.loadingSpinner}></div>
-              <p>권한 정보를 불러오는 중...</p>
-            </div>
-          ) : (
-            children
-          )}
-        </div>
-      </main>
-    </GroupPermissionsProvider>
+      <div className={styles.groupContent}>
+        {isLoading ? (
+          <div className={styles.loadingContainer}>
+            <div className={styles.loadingSpinner}></div>
+            <p>권한 정보를 불러오는 중...</p>
+          </div>
+        ) : (
+          children
+        )}
+      </div>
+    </main>
   )
 }
