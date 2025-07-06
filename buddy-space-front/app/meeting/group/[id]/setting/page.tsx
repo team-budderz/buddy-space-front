@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useGroupPermissions } from "@/app/components/hooks/usegrouppermissiont";
-import styles from "./setting.module.css"
-import api from "@/app/api"
-import { getAuthHeaders } from "@/app/api/auth"
-import { createPortal } from "react-dom"
+import styles from "./setting.module.css";
+import api from "@/app/api";
+import { getAuthHeaders } from "@/app/api/auth";
+import { createPortal } from "react-dom";
 
 function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
     const [mounted, setMounted] = useState(false)
