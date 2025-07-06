@@ -1,5 +1,6 @@
 /* 멤버 페이지 스타일 */
 .membersContainer {
+  position: relative; /* 토스트 메시지가 이 컨테이너 기준으로 위치하도록 설정 */
   padding: 24px;
   max-width: 800px;
   margin: 0 auto;
@@ -275,7 +276,7 @@
 
 /* 초대 모달 스타일 */
 .inviteModalContent {
-  max-width: 500px;
+  width: 500px;
   padding: 32px;
 }
 
@@ -401,7 +402,7 @@
 
 /* 토스트 메시지 */
 .toast {
-  position: fixed;
+  position: absolute; /* 부모 요소인 membersContainer 내에서 절대 위치로 설정 */
   bottom: 30px;
   left: 50%;
   transform: translateX(-50%) translateY(100px);
@@ -411,7 +412,7 @@
   border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 500;
-  z-index: 10000;
+  z-index: 9999;  /* 모달보다 높은 값으로 설정 */
   opacity: 0;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);

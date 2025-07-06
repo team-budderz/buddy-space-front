@@ -671,10 +671,10 @@ export default function MembersPage() {
             </div>
           </div>
         )}
+        {/* 토스트 메시지 */}
+        {toast.show && <div className={`${styles.toast} ${styles.show} ${styles[toast.type]}`}>{toast.message}</div>}
       </ModalPortal>
 
-      {/* 토스트 메시지 */}
-      {toast.show && <div className={`${styles.toast} ${styles.show} ${styles[toast.type]}`}>{toast.message}</div>}
     </div>
   )
 }

@@ -165,7 +165,7 @@ export default function ProfilePage() {
 
   const handleAddressSearch = () => {
     if (typeof window !== "undefined" && (window as any).daum?.Postcode) {
-      ;new (window as any).daum.Postcode({
+      ; new (window as any).daum.Postcode({
         oncomplete: (data: any) => {
           const jibunAddress = data.jibunAddress
           const { sido, sigungu, bname } = data
@@ -210,10 +210,11 @@ export default function ProfilePage() {
 
       showToast("정보가 성공적으로 업데이트되었습니다.")
       setIsEditing(false)
+      setShowPasswordAuthModal(false)
       setIsPasswordVerified(false)
       setImageAction("keep")
       resetImageSelection()
-      setShowPasswordAuthModal(false) // 비밀번호 확인 모달 명시적으로 닫기
+
       await fetchUserInfo()
     } catch (error: any) {
       console.error("사용자 정보 업데이트 실패:", error)
@@ -224,8 +225,8 @@ export default function ProfilePage() {
     }
   }
 
-  const updatePassword = async () => {
-    if (!isPasswordVerified) {
+  const updatePassword = async (skipVerify = false) => {
+    if (!skipVerify && !isPasswordVerified) {
       setPendingAction("password")
       setShowPasswordAuthModal(true)
       return
@@ -244,6 +245,7 @@ export default function ProfilePage() {
       setShowPasswordModal(false)
       setNewPassword("")
       setIsPasswordVerified(false)
+
     } catch (error: any) {
       console.error("비밀번호 변경 실패:", error)
       const errorMessage = error.response?.data?.message || "비밀번호 변경에 실패했습니다."
@@ -251,8 +253,8 @@ export default function ProfilePage() {
     }
   }
 
-  const deleteAccount = async () => {
-    if (!isPasswordVerified) {
+  const deleteAccount = async (skipVerify = false) => {
+    if (!skipVerify && !isPasswordVerified) {
       setPendingAction("delete")
       setShowPasswordModal(false)
       setShowPasswordAuthModal(true)
@@ -260,12 +262,14 @@ export default function ProfilePage() {
     }
 
     try {
-      await api.delete("/users")
+      await api.delete("/users", { withCredentials: true })
+
       showToast("그동안 이용해주셔서 감사합니다.")
       localStorage.removeItem("accessToken")
       setTimeout(() => {
         router.push("/login")
       }, 2000)
+
     } catch (error: any) {
       console.error("회원 탈퇴 실패:", error)
       const errorMessage = error.response?.data?.message || "회원 탈퇴에 실패했습니다."
@@ -288,15 +292,18 @@ export default function ProfilePage() {
       setAuthPassword("")
 
       // 인증 성공 후 원래 작업 실행
+      console.log("[기존 작업] pendingAction", pendingAction);
+
       if (pendingAction === "save") {
         await saveUserInfo(true)
       } else if (pendingAction === "password") {
-        await updatePassword()
+        await updatePassword(true)
       } else if (pendingAction === "delete") {
-        await deleteAccount()
+        await deleteAccount(true)
       }
 
       setPendingAction("")
+
     } catch (error: any) {
       console.error("비밀번호 인증 실패:", error)
       const errorMessage = error.response?.data?.message || "비밀번호 인증에 실패했습니다."
@@ -570,9 +577,8 @@ export default function ProfilePage() {
                     <div className={styles.neighborhoodInfo}>
                       <span className={styles.neighborhoodAddress}>{userInfo.address || "미등록"}</span>
                       <span
-                        className={`${styles.neighborhoodStatusBadge} ${
-                          userInfo.hasNeighborhood ? styles.verified : styles.unverified
-                        }`}
+                        className={`${styles.neighborhoodStatusBadge} ${userInfo.hasNeighborhood ? styles.verified : styles.unverified
+                          }`}
                       >
                         {userInfo.hasNeighborhood ? "인증완료" : "미인증"}
                       </span>
@@ -651,6 +657,11 @@ export default function ProfilePage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   className={styles.formInput}
                   placeholder="새 비밀번호를 입력하세요"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      updatePassword()
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -658,7 +669,7 @@ export default function ProfilePage() {
               <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setShowPasswordModal(false)}>
                 취소
               </button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={updatePassword}>
+              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => updatePassword()}>
                 변경
               </button>
             </div>
@@ -682,7 +693,7 @@ export default function ProfilePage() {
               <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setShowDeleteModal(false)}>
                 취소
               </button>
-              <button className={`${styles.btn} ${styles.btnDanger}`} onClick={deleteAccount}>
+              <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => deleteAccount()}>
                 탈퇴하기
               </button>
             </div>
