@@ -8,6 +8,7 @@ import axios from "axios"
 import api from "@/app/api"
 import { createPortal } from "react-dom"
 
+
 // ModalPortal 컴포넌트 추가
 function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
   const [mounted, setMounted] = useState(false)
@@ -67,6 +68,8 @@ export default function MembersPage() {
   const [profileModalData, setProfileModalData] = useState({ imageUrl: "", joinDate: "" })
   const [inviteData, setInviteData] = useState<InviteData | null>(null)
   const [isCreatingInvite, setIsCreatingInvite] = useState(false)
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
   const { isLoading: permissionsLoading, isLeader, hasPermission } = useGroupPermissions()
 
@@ -329,7 +332,7 @@ export default function MembersPage() {
 
       // 존재하지 않으면 새 채팅방 생성
       const response = await axios.post(
-        `http://localhost:8080/api/group/${groupId}/chat/rooms`,
+        `${API_BASE}/group/${groupId}/chat/rooms`,
         {
           name: `${currentUser.name}와 ${memberName}의 채팅`,
           description: "1:1 대화방",
@@ -394,7 +397,7 @@ export default function MembersPage() {
     try {
       setIsCreatingInvite(true)
       const headers = await getAuthHeaders()
-      const res = await axios.patch(`http://localhost:8080/api/groups/${groupId}/invites`, {}, { headers })
+      const res = await axios.patch(`${API_BASE}/groups/${groupId}/invites`, {}, { headers })
       setInviteData(res.data.result)
       showToast("초대 링크 생성 완료")
     } catch (e: any) {
@@ -413,7 +416,7 @@ export default function MembersPage() {
 
       try {
         const headers = await getAuthHeaders()
-        await api.delete(`/groups/${groupId}/invites`, { headers })
+        await api.delete(`${API_BASE}/groups/${groupId}/invites`, { headers })
       } catch (deleteError) {
         console.warn("기존 링크 삭제 실패:", deleteError)
       }

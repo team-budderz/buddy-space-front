@@ -83,7 +83,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const stompClientRef = useRef<Client | null>(null)
 
-  const API_BASE = process.env.NODE_ENV === "development" ? "http://localhost:8080" : ""
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!
   const getAuthToken = () => localStorage.getItem("accessToken")?.replace(/^"|"$/g, "")
 
   // 메시지를 시간순으로 정렬하는 함수

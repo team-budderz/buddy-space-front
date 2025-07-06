@@ -581,10 +581,10 @@ export default function SettingPage() {
     const approveMember = async (memberId: number) => {
         try {
             setIsLoading(true);
-            // 1️⃣ 가입 승인
+            // 가입 승인
             await api.patch(`/groups/${groupId}/members/${memberId}/approve`);
 
-            // 2️⃣ 채팅방 목록 조회 (경로를 singular 'group' 으로!)
+            // 2️채팅방 목록 조회 (경로를 singular 'group' 으로!)
             const roomsRes = await api.get(`/group/${groupId}/chat/rooms/my`);
             const rooms = roomsRes.data.result ?? roomsRes.data.data;
             if (!Array.isArray(rooms) || rooms.length === 0) {
@@ -592,7 +592,7 @@ export default function SettingPage() {
             }
             const chatRoomId = rooms[0].roomId;
 
-            // 3️⃣ 해당 방에 사용자 초대
+            // 3️해당 방에 사용자 초대
             await api.post(
                 `/group/${groupId}/chat/rooms/${chatRoomId}/participants`,
                 { userId: memberId }

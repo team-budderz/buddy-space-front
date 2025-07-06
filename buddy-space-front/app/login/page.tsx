@@ -15,6 +15,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
+  const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE_URL!;
+
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,8 +33,7 @@ export default function LoginPage() {
 
     try {
       const res = await axios.post(
-        "http://localhost:8080/api/users/login",
-        { email, password },
+        `${API_BASE}/users/login`, { email, password },
         {
           withCredentials: true,
         },
@@ -54,7 +56,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     // 기존 OAuth2 엔드포인트 사용
-    window.location.href = "http://localhost:8080/oauth2/authorization/google"
+    window.location.href = `${AUTH_BASE}/oauth2/authorization/google`
   }
 
   return (

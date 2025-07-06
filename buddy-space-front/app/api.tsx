@@ -1,12 +1,6 @@
-// src/api.tsx
-
 import axios from "axios";
 
-const baseURL =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:8080/api"
-    : "https://api.budderz.co.kr/api";
-
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 // ————— 토큰 재발급 헬퍼 —————
 // 클라이언트에 저장된 refreshToken(또는 쿠키)을 이용해서 재발급만 담당

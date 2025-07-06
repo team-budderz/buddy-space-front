@@ -7,9 +7,9 @@ export default function GoogleOAuthCallbackPage() {
 
   useEffect(() => {
     const query = window.location.search
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL!
     fetch(`${base}/login/oauth2/code/google${query}`, {
-      credentials: 'include',
+      credentials: "include",
     })
       .then(async res => {
         if (!res.ok) {

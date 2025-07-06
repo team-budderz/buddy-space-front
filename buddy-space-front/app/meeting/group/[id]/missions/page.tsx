@@ -9,7 +9,6 @@ interface ModalPortalProps {
   isOpen: boolean;
 }
 
-// ModalPortal 컴포넌트 추가
 const ModalPortal: React.FC<ModalPortalProps> = ({ children, isOpen }) => {
   const [mounted, setMounted] = useState(false)
 
@@ -48,11 +47,11 @@ interface Mission {
   frequency: number
   progressDay: number
   authorName: string
-  authorId: number; 
+  authorId: number;
 }
 
 interface MissionDetail {
-  id: number 
+  id: number
   title: string
   description: string
   startedAt: string
@@ -60,7 +59,7 @@ interface MissionDetail {
   frequency: number
   authorName: string
   authorImageUrl: string
-  createdAt: string 
+  createdAt: string
 }
 
 interface MissionPost {
@@ -164,7 +163,7 @@ export default function MissionsPage() {
 
   const currentUserId = getCurrentUserId()
   const currentUserRole = getCurrentUserRole()
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null) 
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [missionForPost, setMissionForPost] = useState<number | null>(null)
 
   useEffect(() => {
@@ -273,9 +272,9 @@ export default function MissionsPage() {
           const postsWithMissionId = response.data.result.map((p: any) => ({
             missionPostId: p.missionPostId,
             contents: p.contents,
-            authorId: p.authorId, 
-            authorName: p.authorName, 
-            missionId: m.missionId, 
+            authorId: p.authorId,
+            authorName: p.authorName,
+            missionId: m.missionId,
             createdAt: p.createdAt,
             missionTitle: m.title,
           }))
@@ -485,8 +484,8 @@ export default function MissionsPage() {
       if (response.status === 200 && response.data.result) {
         const dto = response.data.result
         setDetailPost({
-          missionPostId: postId,      
-          missionId: missionId,      
+          missionPostId: postId,
+          missionId: missionId,
           contents: dto.contents,
           missionTitle: dto.missionTitle,
           authorName: dto.authorName,
@@ -597,7 +596,7 @@ export default function MissionsPage() {
                     <div className={styles.listMeta}>
                       {p.createdAt ? format(new Date(p.createdAt), 'yyyy.MM.dd') : ''}
                     </div>
-                    
+
                   </div>
                   <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
                     {canEditPost(p) && (
@@ -693,29 +692,29 @@ export default function MissionsPage() {
           <div className={styles.modalOverlay} onClick={() => setDetailMission(null)}>
             <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
               <div className={styles.detailHeader}>
-              <div className={styles.authorInfo}>
-                <img
-                  src={detailMission.authorImageUrl || "/placeholder.svg"}
-                  alt="avatar"
-                  className={styles.avatar}
-                />
-                <div>
-                  <div className={styles.authorName}>{detailMission.authorName}</div>
-                  <div className={styles.postDate}>
-                    {format(new Date(detailMission.createdAt), 'yyyy년 MM월 dd일')}
+                <div className={styles.authorInfo}>
+                  <img
+                    src={detailMission.authorImageUrl || "/placeholder.svg"}
+                    alt="avatar"
+                    className={styles.avatar}
+                  />
+                  <div>
+                    <div className={styles.authorName}>{detailMission.authorName}</div>
+                    <div className={styles.postDate}>
+                      {format(new Date(detailMission.createdAt), 'yyyy년 MM월 dd일')}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className={styles.detailBody}>
-              <h3>기간 </h3>
-              <div className={styles.detailDates}>
-                {detailMission.startedAt} ~ {detailMission.endedAt}
+              <div className={styles.detailBody}>
+                <h3>기간 </h3>
+                <div className={styles.detailDates}>
+                  {detailMission.startedAt} ~ {detailMission.endedAt}
+                </div>
+                <h3 className={styles.detailTitle}>미션 : {detailMission.title}</h3>
+                <div className={styles.detailContent}>{detailMission.description}</div>
               </div>
-              <h3 className={styles.detailTitle}>미션 : {detailMission.title}</h3>
-              <div className={styles.detailContent}>{detailMission.description}</div>
-            </div>
               <div className={styles.modalActions}>
                 <button
                   className={styles.cancelButton}
@@ -731,7 +730,7 @@ export default function MissionsPage() {
                     className={styles.submitButton}
                     onClick={(e) => {
                       e.stopPropagation()
-                      setMissionForPost(detailMission.id) 
+                      setMissionForPost(detailMission.id)
                       setPostModal(true)
                     }}
                   >
@@ -759,25 +758,25 @@ export default function MissionsPage() {
           <div className={styles.modalOverlay} onClick={() => setDetailPost(null)}>
             <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
               <div className={styles.detailHeader}>
-              <div className={styles.authorInfo}>
-                <img
-                  src={detailPost.authorImageUrl || "/placeholder.svg"}
-                  alt="avatar"
-                  className={styles.avatar}
-                />
-                <div>
-                  <div className={styles.authorName}>{detailPost.authorName}</div>
-                  <div className={styles.postDate}>
-                    {format(new Date(detailPost.createdAt), 'yyyy년 MM월 dd일')}
+                <div className={styles.authorInfo}>
+                  <img
+                    src={detailPost.authorImageUrl || "/placeholder.svg"}
+                    alt="avatar"
+                    className={styles.avatar}
+                  />
+                  <div>
+                    <div className={styles.authorName}>{detailPost.authorName}</div>
+                    <div className={styles.postDate}>
+                      {format(new Date(detailPost.createdAt), 'yyyy년 MM월 dd일')}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className={styles.detailBody}>
-              <h3 className={styles.detailTitle}>인증 내용</h3>
-              <div className={styles.detailContent}>{detailPost.contents}</div>
-            </div>
+              <div className={styles.detailBody}>
+                <h3 className={styles.detailTitle}>인증 내용</h3>
+                <div className={styles.detailContent}>{detailPost.contents}</div>
+              </div>
               <div className={styles.modalActions}>
                 <button className={styles.cancelButton} onClick={() => setDetailPost(null)}>
                   닫기

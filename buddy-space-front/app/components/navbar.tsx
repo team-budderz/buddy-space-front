@@ -4,13 +4,10 @@ import type React from "react"
 import { useCallback, useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import api from "@/app/api"
-import { useChatDropdown } from "./chat/useChatDropdown"
 import styles from "./navbar.module.css"
 import ChatWindow from "./chat/chat-window"
 
-const API_BASE = process.env.NODE_ENV === "development"
-  ? "http://localhost:8080"
-  : "https://api.budderz.co.kr";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 export interface ChatRoom {
   roomId: number
@@ -33,7 +30,6 @@ export default function NavBar() {
   const [userInfo, setUserInfo] = useState<{ id: number; profileImageUrl?: string;[key: string]: any } | null>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notificationCount, setNotificationCount] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
 
   const [currentPage, setCurrentPage] = useState(0)
@@ -124,7 +120,7 @@ export default function NavBar() {
       if (!token) throw new Error("토큰이 없습니다.");
 
       // 1) 내가 속한 그룹 목록 조회
-      const groupsRes = await fetch(`${API_BASE}/api/groups/my`, {
+      const groupsRes = await fetch(`${API_BASE}/groups/my`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const groupsData = await groupsRes.json();
@@ -140,7 +136,7 @@ export default function NavBar() {
 
         // 2) 채팅 방 목록 조회 (여기서는 ID·이름만 들어옴)
         const chatRes = await fetch(
-          `${API_BASE}/api/group/${groupId}/chat/rooms/my`,
+          `${API_BASE}/group/${groupId}/chat/rooms/my`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!chatRes.ok) continue;
@@ -152,7 +148,7 @@ export default function NavBar() {
           chatData.result.map(async (room: any) => {
             // 상세 조회
             const detailRes = await fetch(
-              `${API_BASE}/api/group/${groupId}/chat/rooms/${room.roomId}`,
+              `${API_BASE}/group/${groupId}/chat/rooms/${room.roomId}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             if (!detailRes.ok) throw new Error("채팅방 상세 조회 실패");
@@ -192,9 +188,10 @@ export default function NavBar() {
       localStorage.setItem('clientId', clientId);
     }
 
-    const newEventSource = new EventSource(`http://localhost:8080/api/notifications/subscribe?clientId=${clientId}`, {
-      withCredentials: true
-    });
+    const newEventSource = new EventSource(
+      `${API_BASE}/notifications/subscribe?clientId=${clientId}`,
+      { withCredentials: true }
+    );
 
     newEventSource.addEventListener("connect", (event) => {
       console.log("SSE 연결 성공:", event.data);

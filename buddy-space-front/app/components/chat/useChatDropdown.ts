@@ -19,9 +19,10 @@ export function useChatDropdown() {
     const token = localStorage.getItem("accessToken")
     if (!token) return
 
+    const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL!
     const fetchGroupChatRooms = async () => {
       try {
-        const groupsRes = await fetch("http://localhost:8080/api/groups/my", {
+        const groupsRes = await fetch(`${baseURL}/groups/my`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
@@ -38,7 +39,7 @@ export function useChatDropdown() {
           const groupId = group.groupId || group.id
           if (!groupId) continue
 
-          const chatRes = await fetch(`http://localhost:8080/api/group/${groupId}/chat/rooms/my`, {
+          const chatRes = await fetch(`${baseURL}/group/${groupId}/chat/rooms/my`, {
             headers: { Authorization: `Bearer ${token}` },
           })
           const chatData = await chatRes.json()
