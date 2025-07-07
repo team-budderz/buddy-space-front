@@ -46,6 +46,9 @@ export default function LoginPage() {
       localStorage.setItem("userEmail", email)
       localStorage.setItem("userPassword", password)
 
+      // 쿠키 저장
+      document.cookie = `accessToken=${res.data.result.accessToken}; path=/; SameSite=None; Secure`;
+
       router.push("/meeting")
     } catch (error) {
       setError("로그인 실패: 이메일 또는 비밀번호를 확인하세요.")
