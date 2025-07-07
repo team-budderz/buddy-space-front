@@ -113,7 +113,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     if (!token) return
     setIsLoading(true)
 
-    const socket = new SockJS(`${CHAT_BASE}/ws`)
+    const socket = new SockJS(`${CHAT_BASE}/ws?access_token=${token}`)
     const client = new Client({
       webSocketFactory: () => socket,
       connectHeaders: { Authorization: `Bearer ${token}` },
@@ -128,23 +128,32 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
         // 메시지 수신 구독
         client.subscribe(`/sub/chat/rooms/${roomId}/messages`, ({ body }) => {
           try {
-            const payload = JSON.parse(body) as WSIncoming
+            const payload = JSON.parse(body)
             console.log("[WebSocket] 메시지 데이터:", payload)
 
             // 삭제 이벤트 처리
-            if (payload.event === "message:delete") {
-              console.log("[WebSocket] 메시지 삭제:", payload.data.messageId)
+            if (payload.event === "message:deleted") {
+              console.log("[WebSocket] 삭제 알림 수신:", payload.data.messageId)
               setMessages(prev => prev.filter(m => m.messageId !== payload.data.messageId))
               return
             }
+            // 새 메시지 처리 (직접 형식)
+            if (payload.messageId && payload.senderId && payload.content) {
+              const msg = payload as Message
+              console.log("[WebSocket] 새 메시지 (직접):", msg)
+              setMessages((prev) => {
+                if (prev.some((x) => x.messageId === msg.messageId)) return prev
+                return sortMessagesByTime([...prev, msg])
+              })
+              return
+            }
 
-            // 생성 이벤트 처리 (message, message:created)
+            // 새 메시지 처리 (이벤트 래핑)
             if (payload.event === "message" || payload.event === "message:created") {
-              const msg = payload.data
+              const msg = payload.data as Message
               console.log("[WebSocket] 새 메시지 (이벤트):", msg)
-              setMessages(prev => {
-                // 중복 방지
-                if (prev.some(x => x.messageId === msg.messageId)) return prev
+              setMessages((prev) => {
+                if (prev.some((x) => x.messageId === msg.messageId)) return prev
                 return sortMessagesByTime([...prev, msg])
               })
             }
@@ -450,7 +459,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
   const deleteMessage = useCallback(
     (messageId: number, event?: React.MouseEvent) => {
-      if (event) event.stopPropagation()
+      event?.stopPropagation()
 
       const client = stompClientRef.current
       if (!client || !isConnected) return
@@ -459,8 +468,15 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
       try {
         client.publish({
-          destination: `/pub/chat/rooms/${roomId}/delete`,
-          body: JSON.stringify({ messageId: messageId }),
+          destination: `/pub/chat/rooms/${roomId}/messages/${messageId}`,
+          body: JSON.stringify({
+            event: "message:delete",
+            data: {
+              roomId,
+              messageId,
+              senderId: currentUserId,
+            }
+          }),
         })
 
         console.log("[deleteMessage] 삭제 요청 전송 완료")
@@ -468,9 +484,8 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
         console.error("[deleteMessage] 삭제 오류:", error)
       }
     },
-    [roomId, isConnected],
+    [roomId, isConnected, currentUserId],
   )
-
 
 
   // 읽음 처리
