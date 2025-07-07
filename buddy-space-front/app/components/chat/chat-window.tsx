@@ -88,6 +88,8 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
   const stompClientRef = useRef<Client | null>(null)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!
+  const CHAT_BASE = process.env.NEXT_PUBLIC_CHAT_BASE_URL!
+
   const getAuthToken = () => localStorage.getItem("accessToken")?.replace(/^"|"$/g, "")
 
   // 메시지를 시간순으로 정렬하는 함수
@@ -115,7 +117,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     if (!token) return
     setIsLoading(true)
 
-    const socket = new SockJS(`${API_BASE}/ws?access_token=${token}`)
+    const socket = new SockJS(`${CHAT_BASE}/ws?access_token=${token}`)
     const client = new Client({
       webSocketFactory: () => socket,
       connectHeaders: { Authorization: `Bearer ${token}` },
