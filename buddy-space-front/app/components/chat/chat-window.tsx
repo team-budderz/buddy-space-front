@@ -113,11 +113,14 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     if (!token) return;
     setIsLoading(true);
 
-    const socket = new SockJS(`${CHAT_BASE}/ws?access_token=${token}`);
+    const socket = new SockJS(`${CHAT_BASE}/ws`);
     const client = new Client({
       // 브로커 URL 대신 webSocketFactory 사용
       webSocketFactory: () => socket,
-      connectHeaders: { Authorization: `Bearer ${token}` },
+      connectHeaders: {
+        Authorization: `Bearer ${token}`,
+      },
+
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
