@@ -109,22 +109,24 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
   // WebSocket 연결 및 구독 설정
   const connectWebSocket = () => {
-    const token = getAuthToken()
-    if (!token) return
-    setIsLoading(true)
+    const token = getAuthToken();
+    if (!token) return;
+    setIsLoading(true);
 
-    const socket = new SockJS(`${CHAT_BASE}/ws`)
+    const wsUrl = CHAT_BASE.replace(/^http/, 'ws') + `/ws?access_token=${token}`;
+
     const client = new Client({
-      webSocketFactory: () => socket,
+      brokerURL: wsUrl,
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-      debug: (msg) => console.log("[WebSocket]", msg),
+      debug: (msg) => console.log('[WebSocket]', msg),
+
       onConnect: () => {
-        console.log("[WebSocket] 연결 성공")
-        setIsConnected(true)
-        setIsLoading(false)
+        console.log('[WebSocket] 연결 성공');
+        setIsConnected(true);
+        setIsLoading(false);
 
         // 메시지 수신 구독
         client.subscribe(`/sub/chat/rooms/${roomId}/messages`, ({ body }) => {
