@@ -113,14 +113,17 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     if (!token) return;
     setIsLoading(true);
 
-    const socket = new SockJS(`${CHAT_BASE}/ws`);
+    // 1) CHAT_BASE에서 쿼리스트링 제거
+    const cleanBase = CHAT_BASE.split('?')[0];  // or CHAT_BASE.replace(/\?.*$/, '')
+
+    // 2) SockJS는 쿼리 없이 ws 엔드포인트만 지정
+    const socket = new SockJS(`${cleanBase}/ws`);
+
     const client = new Client({
-      // 브로커 URL 대신 webSocketFactory 사용
       webSocketFactory: () => socket,
       connectHeaders: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,  // STOMP CONNECT 헤더로만 토큰 전달
       },
-
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
