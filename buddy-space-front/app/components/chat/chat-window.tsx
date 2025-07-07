@@ -113,7 +113,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     if (!token) return
     setIsLoading(true)
 
-    const socket = new SockJS(`${CHAT_BASE}/ws`)
+    const socket = new SockJS(`${CHAT_BASE}/ws?access_token=${token}`)
     const client = new Client({
       webSocketFactory: () => socket,
       connectHeaders: { Authorization: `Bearer ${token}` },
@@ -124,6 +124,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
       onConnect: () => {
         console.log("[WebSocket] 연결 성공")
         setIsConnected(true)
+        setIsLoading(false)
 
         // 메시지 수신 구독
         client.subscribe(`/sub/chat/rooms/${roomId}/messages`, ({ body }) => {
@@ -132,11 +133,12 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
             console.log("[WebSocket] 메시지 데이터:", payload)
 
             // 삭제 이벤트 처리
-            if (payload.event === "message:deleted") {
-              console.log("[WebSocket] 삭제 알림 수신:", payload.data.messageId)
-              setMessages(prev => prev.filter(m => m.messageId !== payload.data.messageId))
+            if (payload.event === "message:delete") {
+              console.log("[WebSocket] 메시지 삭제:", payload.data.messageId)
+              setMessages((prev) => prev.filter((m) => m.messageId !== payload.data.messageId))
               return
             }
+
             // 새 메시지 처리 (직접 형식)
             if (payload.messageId && payload.senderId && payload.content) {
               const msg = payload as Message
