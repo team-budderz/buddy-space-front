@@ -1,7 +1,10 @@
+
 "use client"
+
 
 import { useCallback, useEffect, useRef, useState, useContext } from "react"
 import { useChatPermissions } from "./useChatPermissions"
+
 import type React from "react"
 import { Client, type Frame } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
@@ -41,6 +44,7 @@ interface ChatMember {
   profileUrl?: string
   role?: "LEADER" | "SUB_LEADER" | "MEMBER"
 }
+
 
 interface GroupMembers {
   id: number
@@ -84,8 +88,6 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
   const stompClientRef = useRef<Client | null>(null)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!
-  const CHAT_BASE = process.env.NEXT_PUBLIC_CHAT_BASE_URL!
-
   const getAuthToken = () => localStorage.getItem("accessToken")?.replace(/^"|"$/g, "")
 
   // 메시지를 시간순으로 정렬하는 함수
@@ -113,7 +115,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     if (!token) return
     setIsLoading(true)
 
-    const socket = new SockJS(`${CHAT_BASE}/ws?access_token=${token}`);
+    const socket = new SockJS(`${API_BASE}/ws?access_token=${token}`)
     const client = new Client({
       webSocketFactory: () => socket,
       connectHeaders: { Authorization: `Bearer ${token}` },
@@ -163,7 +165,6 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
             console.error("[WebSocket] 메시지 파싱 오류:", error)
           }
         })
-
 
         // 실시간 읽음 상태 구독 - 개별 읽음 업데이트
         client.subscribe(`/sub/chat/rooms/${roomId}/read`, ({ body }) => {
@@ -287,7 +288,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/groups/${groupId}/members`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/members`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -303,7 +304,6 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
   useEffect(() => {
     connectWebSocket()
-    loadAllGroupMembers()
     return () => {
       stompClientRef.current?.deactivate()
     }
@@ -315,7 +315,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/messages?page=0&size=50`, {
+      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/messages?page=0&size=50`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -341,7 +341,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/members`, {
+      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/members`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -360,7 +360,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/participants`, {
+      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -389,7 +389,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/participants/${userId}`, {
+      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants/${userId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -413,7 +413,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/participants/me`, {
+      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants/me`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -462,7 +462,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
   const deleteMessage = useCallback(
     (messageId: number, event?: React.MouseEvent) => {
-      event?.stopPropagation()
+      if (event) event.stopPropagation()
 
       const client = stompClientRef.current
       if (!client || !isConnected) return
@@ -471,15 +471,8 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
       try {
         client.publish({
-          destination: `/pub/chat/rooms/${roomId}/messages/${messageId}`,
-          body: JSON.stringify({
-            event: "message:delete",
-            data: {
-              roomId,
-              messageId,
-              senderId: currentUserId,
-            }
-          }),
+          destination: `/pub/chat/rooms/${roomId}/delete`,
+          body: JSON.stringify({ messageId: messageId }),
         })
 
         console.log("[deleteMessage] 삭제 요청 전송 완료")
@@ -487,9 +480,8 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
         console.error("[deleteMessage] 삭제 오류:", error)
       }
     },
-    [roomId, isConnected, currentUserId],
+    [roomId, isConnected],
   )
-
 
   // 읽음 처리
   const markAsRead = useCallback(
@@ -785,7 +777,6 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
           </div>
         </div>
       </div>
-    </div >
+    </div>
   )
 }
-

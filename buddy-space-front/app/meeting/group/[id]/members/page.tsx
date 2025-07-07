@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -7,7 +8,6 @@ import styles from "./members.module.css"
 import axios from "axios"
 import api from "@/app/api"
 import { createPortal } from "react-dom"
-
 
 // ModalPortal 컴포넌트 추가
 function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
@@ -674,10 +674,10 @@ export default function MembersPage() {
             </div>
           </div>
         )}
-        {/* 토스트 메시지 */}
-        {toast.show && <div className={`${styles.toast} ${styles.show} ${styles[toast.type]}`}>{toast.message}</div>}
       </ModalPortal>
 
+      {/* 토스트 메시지 */}
+      {toast.show && <div className={`${styles.toast} ${styles.show} ${styles[toast.type]}`}>{toast.message}</div>}
     </div>
   )
 }
