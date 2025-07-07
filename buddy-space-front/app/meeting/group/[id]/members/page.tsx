@@ -359,8 +359,6 @@ export default function MembersPage() {
   }
 
 
-
-
   const handleAuthError = () => {
     showToast("인증이 만료되었습니다. 다시 로그인해주세요.", "error")
     localStorage.clear()
