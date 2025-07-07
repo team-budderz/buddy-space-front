@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useCallback, useEffect, useState, useRef } from "react"
+import { toast } from 'react-toastify'
 import { useRouter } from "next/navigation"
 import api from "@/app/api"
 import styles from "./navbar.module.css"
@@ -83,6 +84,7 @@ export default function NavBar() {
     }
 
     fetchUser()
+    loadInitialNotifications();
     loadAllChatRooms()
     connectNotificationSSE();
 
@@ -125,8 +127,8 @@ export default function NavBar() {
       });
       const groupsData = await groupsRes.json();
       const groups = Array.isArray(groupsData.result?.content)
-          ? groupsData.result.content
-          : [];
+        ? groupsData.result.content
+        : [];
 
       const allRooms: ChatRoom[] = [];
 
@@ -136,8 +138,8 @@ export default function NavBar() {
 
         // 2) 채팅 방 목록 조회 (여기서는 ID·이름만 들어옴)
         const chatRes = await fetch(
-            `${API_BASE}/group/${groupId}/chat/rooms/my`,
-            { headers: { Authorization: `Bearer ${token}` } }
+          `${API_BASE}/group/${groupId}/chat/rooms/my`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!chatRes.ok) continue;
         const chatData = await chatRes.json();
@@ -145,22 +147,22 @@ export default function NavBar() {
 
         // 3) 각 방에 대해 상세 조회 → 정확한 type 가져오기
         const detailedRooms = await Promise.all(
-            chatData.result.map(async (room: any) => {
-              // 상세 조회
-              const detailRes = await fetch(
-                  `${API_BASE}/group/${groupId}/chat/rooms/${room.roomId}`,
-                  { headers: { Authorization: `Bearer ${token}` } }
-              );
-              if (!detailRes.ok) throw new Error("채팅방 상세 조회 실패");
+          chatData.result.map(async (room: any) => {
+            // 상세 조회
+            const detailRes = await fetch(
+              `${API_BASE}/group/${groupId}/chat/rooms/${room.roomId}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!detailRes.ok) throw new Error("채팅방 상세 조회 실패");
 
-              const detailData = await detailRes.json();
-              return {
-                roomId: detailData.result.roomId,
-                roomName: detailData.result.name,
-                roomType: detailData.result.type,
-                groupId,
-              } as ChatRoom;
-            })
+            const detailData = await detailRes.json();
+            return {
+              roomId: detailData.result.roomId,
+              roomName: detailData.result.name,
+              roomType: detailData.result.type,
+              groupId,
+            } as ChatRoom;
+          })
         );
 
         allRooms.push(...detailedRooms);
@@ -178,47 +180,39 @@ export default function NavBar() {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
 
-    if (sseEventSource) {
-      sseEventSource.close();
-    }
+    sseEventSource?.close();
 
-    let clientId = localStorage.getItem('clientId');
-    if (!clientId) {
-      clientId = crypto.randomUUID();
-      localStorage.setItem('clientId', clientId);
-    }
+    let clientId = localStorage.getItem('clientId') || crypto.randomUUID();
+    localStorage.setItem('clientId', clientId);
 
-    const newEventSource = new EventSource(
-        `${API_BASE}/notifications/subscribe?clientId=${clientId}`,
-        { withCredentials: true }
+    const es = new EventSource(
+      `${API_BASE}/notifications/subscribe?clientId=${clientId}`,
+      { withCredentials: true }
     );
 
-    newEventSource.addEventListener("connect", (event) => {
-      console.log("SSE 연결 성공:", event.data);
+    es.addEventListener("connect", () => {
+      console.log("SSE 연결 성공");
     });
 
-    newEventSource.addEventListener("notification", async (event) => {
-      const notification = JSON.parse(event.data);
-      console.log("새 알림 도착:", notification);
-      await loadInitialNotifications();
+    es.addEventListener("notification", (e) => {
+      const notification: Notification = JSON.parse(e.data);
+
+      setNotifications(prev => [notification, ...prev]);
+      setNotificationCount(cnt => cnt + 1);
+      toast.info(notification.content, {
+        position: "top-right",
+        autoClose: 3000,
+      });
     });
 
-    newEventSource.onerror = (event) => {
-      console.error("SSE 연결 오류 또는 종료", event);
-
-      if (newEventSource.readyState === EventSource.CLOSED) {
-        console.warn("SSE 연결이 닫혔습니다.");
-      } else if (newEventSource.readyState === EventSource.CONNECTING) {
-        console.warn("SSE 재연결 시도 중입니다.");
-      }
-
-      newEventSource.close();
+    es.onerror = () => {
+      console.error("SSE 오류, 재연결 시도");
+      es.close();
       setTimeout(connectNotificationSSE, 5000);
     };
 
-
-    setSseEventSource(newEventSource);
-  }
+    setSseEventSource(es);
+  };
 
   const fetchNotifications = async (page = 0) => {
     const token = localStorage.getItem("accessToken");
@@ -257,12 +251,12 @@ export default function NavBar() {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-        entries => {
-          if (entries[0].isIntersecting) {
-            loadMoreNotifications();
-          }
-        },
-        { threshold: 1 }
+      entries => {
+        if (entries[0].isIntersecting) {
+          loadMoreNotifications();
+        }
+      },
+      { threshold: 1 }
     );
 
     if (sentinelRef.current) {
@@ -311,7 +305,7 @@ export default function NavBar() {
           headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
         });
         setNotifications(prev =>
-            prev.map(n => (n.notificationId === notificationId ? { ...n, isRead: true } : n))
+          prev.map(n => (n.notificationId === notificationId ? { ...n, isRead: true } : n))
         );
         setNotificationCount(prev => (prev > 0 ? prev - 1 : 0));
       } catch (error) {
@@ -323,154 +317,154 @@ export default function NavBar() {
   };
 
   return (
-      <>
-        <nav className={styles.navbar}>
-          <a href="/meeting" className={styles.logoSection}>
-            <img
-                src="https://raw.githubusercontent.com/withong/my-storage/main/budderz/free-icon-wing-12298574.png"
-                alt="벗터 로고"
-                className={styles.logoImage}
-            />
-          </a>
+    <>
+      <nav className={styles.navbar}>
+        <a href="/meeting" className={styles.logoSection}>
+          <img
+            src="https://raw.githubusercontent.com/withong/my-storage/main/budderz/free-icon-wing-12298574.png"
+            alt="벗터 로고"
+            className={styles.logoImage}
+          />
+        </a>
 
-          <div className={styles.searchSection}>
-            <div className={styles.searchContainer}>
-              <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="모임 이름 검색"
-                  className={styles.searchInput}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSearch()
-                  }}
-              />
-              <button className={styles.searchButton} onClick={handleSearch}>
-                검색
-              </button>
-            </div>
+        <div className={styles.searchSection}>
+          <div className={styles.searchContainer}>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="모임 이름 검색"
+              className={styles.searchInput}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch()
+              }}
+            />
+            <button className={styles.searchButton} onClick={handleSearch}>
+              검색
+            </button>
           </div>
+        </div>
+
+        <div className={styles.navSection}>
+          <Dropdown
+            icon="https://raw.githubusercontent.com/withong/my-storage/main/budderz/free-icon-notification-bell-8377307.png"
+            alt="알림"
+            badge={notificationCount}
+            onOpen={loadInitialNotifications}
+            content={
+              <div className={styles.notificationDropdown} ref={notificationDropdownRef}>
+                <div className={styles.notificationHeader}>
+                  <h3>알림</h3>
+                </div>
+                {isLoadingNotifications && notifications.length === 0 ? (
+                  <div className={styles.loadingMessage}>알림을 불러오는 중...</div>
+                ) : notifications.length === 0 ? (
+                  <div className={styles.emptyMessage}>알림이 없습니다</div>
+                ) : (
+                  <div className={styles.notificationList}>
+                    {notifications.map((notification) => (
+                      <div key={notification.notificationId} className={`${styles.notificationItem} ${notification.isRead ? '' : styles.unread}`} onClick={() => handleNotificationClick(notification)}>
+                        <div className={styles.notificationContent}>
+                          <div className={styles.notificationText}>{notification.content}</div>
+                          <div className={styles.notificationMeta}>
+                            <span className={styles.groupName}>{notification.groupName}</span>
+                            <span className={styles.notificationTime}>
+                              {formatNotificationTime(notification.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={sentinelRef} style={{ height: "1px" }} />
+                  </div>
+                )}
+              </div>
+            }
+          />
 
           <div className={styles.navSection}>
             <Dropdown
-                icon="https://raw.githubusercontent.com/withong/my-storage/main/budderz/free-icon-notification-bell-8377307.png"
-                alt="알림"
-                badge={notificationCount}
-                onOpen={loadInitialNotifications}
-                content={
-                  <div className={styles.notificationDropdown} ref={notificationDropdownRef}>
-                    <div className={styles.notificationHeader}>
-                      <h3>알림</h3>
-                    </div>
-                    {isLoadingNotifications && notifications.length === 0 ? (
-                        <div className={styles.loadingMessage}>알림을 불러오는 중...</div>
-                    ) : notifications.length === 0 ? (
-                        <div className={styles.emptyMessage}>알림이 없습니다</div>
-                    ) : (
-                        <div className={styles.notificationList}>
-                          {notifications.map((notification) => (
-                              <div key={notification.notificationId} className={`${styles.notificationItem} ${notification.isRead ? '' : styles.unread}`} onClick={() => handleNotificationClick(notification)}>
-                                <div className={styles.notificationContent}>
-                                  <div className={styles.notificationText}>{notification.content}</div>
-                                  <div className={styles.notificationMeta}>
-                                    <span className={styles.groupName}>{notification.groupName}</span>
-                                    <span className={styles.notificationTime}>
-                              {formatNotificationTime(notification.createdAt)}
-                            </span>
-                                  </div>
-                                </div>
-                              </div>
-                          ))}
-                          <div ref={sentinelRef} style={{ height: "1px" }} />
-                        </div>
-                    )}
+              icon="https://raw.githubusercontent.com/withong/my-storage/main/budderz/free-icon-conversation-5323491.png"
+              alt="채팅"
+              badge={0}
+              content={
+                <div className={styles.chatDropdown}>
+                  <div className={styles.chatHeader}>
+                    <h3>채팅</h3>
                   </div>
-                }
-            />
 
-            <div className={styles.navSection}>
-              <Dropdown
-                  icon="https://raw.githubusercontent.com/withong/my-storage/main/budderz/free-icon-conversation-5323491.png"
-                  alt="채팅"
-                  badge={0}
-                  content={
-                    <div className={styles.chatDropdown}>
-                      <div className={styles.chatHeader}>
-                        <h3>채팅</h3>
-                      </div>
-
-                      {isLoadingChats ? (
-                          <div className={styles.loadingMessage}>채팅방을 불러오는 중...</div>
-                      ) : chatRooms.length === 0 ? (
-                          <div className={styles.emptyMessage}>채팅 내역이 없습니다</div>
-                      ) : (
-                          <div className={styles.chatList}>
-                            {chatRooms.map((room) => (
-                                <div
-                                    key={room.roomId}
-                                    className={styles.chatItem}
-                                    onClick={() => handleChatRoomClick(room)}
-                                >
-                                  <div className={styles.chatItemContent}>
-                                    <div className={styles.chatItemHeader}>
+                  {isLoadingChats ? (
+                    <div className={styles.loadingMessage}>채팅방을 불러오는 중...</div>
+                  ) : chatRooms.length === 0 ? (
+                    <div className={styles.emptyMessage}>채팅 내역이 없습니다</div>
+                  ) : (
+                    <div className={styles.chatList}>
+                      {chatRooms.map((room) => (
+                        <div
+                          key={room.roomId}
+                          className={styles.chatItem}
+                          onClick={() => handleChatRoomClick(room)}
+                        >
+                          <div className={styles.chatItemContent}>
+                            <div className={styles.chatItemHeader}>
                               <span className={styles.chatRoomName}>
                                 {`${room.roomType === "GROUP" ? "🏠" : "💬"
-                                } ${room.roomName}`}
+                                  } ${room.roomName}`}
                               </span>
 
-                                    </div>
-                                  </div>
-                                </div>
-                            ))}
+                            </div>
                           </div>
-                      )}
+                        </div>
+                      ))}
                     </div>
-                  }
-              />
-            </div>
-
-
-            <Dropdown
-                icon={
-                    userInfo?.profileImageUrl ||
-                    "https://raw.githubusercontent.com/withong/my-storage/main/budderz/default.png"
-                }
-                alt="프로필"
-                className={styles.profileImage}
-                content={
-                  <>
-                    <div className={styles.dropdownItem} onClick={() => router.push("/profile")}>
-                      👤 내 정보 조회
-                    </div>
-                    <div className={styles.dropdownItem} onClick={logoutUser}>
-                      🚪 로그아웃
-                    </div>
-                  </>
-                }
+                  )}
+                </div>
+              }
             />
           </div>
-        </nav>
 
-        {/* 채팅 창 */}
-        {activeChatWindow && userInfo && activeChatWindow.groupId != null && (
-            <ChatWindow
-                roomId={activeChatWindow.roomId}
-                roomName={activeChatWindow.roomName}
-                roomType={activeChatWindow.roomType}
-                groupId={activeChatWindow.groupId}
-                currentUserId={userInfo.id}
-                onClose={() => {
-                  closeChatWindow(activeChatWindow.roomId);
-                  loadAllChatRooms();
-                }}
-            />
-        )}
-        {activeChatWindow && !activeChatWindow.groupId && (
-            <div className={styles.chatError}>
-              그룹 ID가 없어 채팅을 불러올 수 없습니다.
-            </div>
-        )}
 
-      </>
+          <Dropdown
+            icon={
+              userInfo?.profileImageUrl ||
+              "https://raw.githubusercontent.com/withong/my-storage/main/budderz/default.png"
+            }
+            alt="프로필"
+            className={styles.profileImage}
+            content={
+              <>
+                <div className={styles.dropdownItem} onClick={() => router.push("/profile")}>
+                  👤 내 정보 조회
+                </div>
+                <div className={styles.dropdownItem} onClick={logoutUser}>
+                  🚪 로그아웃
+                </div>
+              </>
+            }
+          />
+        </div>
+      </nav>
+
+      {/* 채팅 창 */}
+      {activeChatWindow && userInfo && activeChatWindow.groupId != null && (
+        <ChatWindow
+          roomId={activeChatWindow.roomId}
+          roomName={activeChatWindow.roomName}
+          roomType={activeChatWindow.roomType}
+          groupId={activeChatWindow.groupId}
+          currentUserId={userInfo.id}
+          onClose={() => {
+            closeChatWindow(activeChatWindow.roomId);
+            loadAllChatRooms();
+          }}
+        />
+      )}
+      {activeChatWindow && !activeChatWindow.groupId && (
+        <div className={styles.chatError}>
+          그룹 ID가 없어 채팅을 불러올 수 없습니다.
+        </div>
+      )}
+
+    </>
   )
 }
 
@@ -506,21 +500,21 @@ function Dropdown({ icon, alt, content, className, badge, onOpen }: DropdownProp
   }
 
   return (
-      <div className={styles.dropdownWrapper} ref={dropdownRef}>
-        <div className={styles.iconContainer}>
-          <img
-              src={icon || "/placeholder.svg"}
-              alt={alt}
-              className={className || styles.navIcon}
-              onClick={handleToggle}
-          />
-          {badge && badge > 0 && <span className={styles.badge}>{badge > 99 ? "99+" : badge}</span>}
-        </div>
-        {open && (
-            <div className={`${styles.dropdownMenu} ${styles.show}`} onClick={(e) => e.stopPropagation()}>
-              {content}
-            </div>
-        )}
+    <div className={styles.dropdownWrapper} ref={dropdownRef}>
+      <div className={styles.iconContainer}>
+        <img
+          src={icon || "/placeholder.svg"}
+          alt={alt}
+          className={className || styles.navIcon}
+          onClick={handleToggle}
+        />
+        {badge && badge > 0 && <span className={styles.badge}>{badge > 99 ? "99+" : badge}</span>}
       </div>
+      {open && (
+        <div className={`${styles.dropdownMenu} ${styles.show}`} onClick={(e) => e.stopPropagation()}>
+          {content}
+        </div>
+      )}
+    </div>
   )
 }
