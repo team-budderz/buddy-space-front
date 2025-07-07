@@ -20,6 +20,7 @@ interface AttachedFile {
 export default function CreatePostPage() {
   const [content, setContent] = useState("")
   const [isNotice, setIsNotice] = useState(false)
+  const [reserveAt, setReserveAt] = useState<string>("")
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showFileModal, setShowFileModal] = useState(false)
@@ -251,10 +252,21 @@ export default function CreatePostPage() {
       return
     }
 
+    if (reserveAt) {
+      const selectedTime = new Date(reserveAt)
+      const now = new Date()
+
+      if (selectedTime.getTime() < now.getTime()) {
+        alert("예약 시간은 현재보다 이후여야 합니다.")
+        return
+      }
+    }
+
     try {
       setIsSubmitting(true)
       const cleanedContent = cleanContent(content)
-      const postData = { content: cleanedContent, isNotice: isNotice, reserveAt: null }
+      const postData = { content: cleanedContent, isNotice: isNotice,
+        reserveAt: reserveAt ? new Date(reserveAt).toISOString() : null }
       const res = await api.post(`/groups/${groupId}/posts`, postData)
       const postId = res.data.result.postId
       router.push(`/meeting/group/${groupId}/posts/${postId}`)
@@ -353,6 +365,21 @@ export default function CreatePostPage() {
               </label>
             </div>
           </div>
+          <div className={styles.optionsSection}>
+            <div className={styles.formRow}>
+              <label htmlFor="reserveAt" className={styles.label}>예약 게시 시간</label>
+              <input
+                  type="datetime-local"
+                  id="reserveAt"
+                  name="reserveAt"
+                  value={reserveAt}
+                  onChange={(e) => setReserveAt(e.target.value)}
+                  className={styles.input}
+                  min={new Date().toISOString().slice(0, 16)}
+              />
+            </div>
+          </div>
+
 
           <div className={styles.actionButtons}>
             <button onClick={handleCancel} disabled={isSubmitting} className={styles.cancelButton}>
