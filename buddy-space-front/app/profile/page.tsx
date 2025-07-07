@@ -575,9 +575,9 @@ export default function ProfilePage() {
                     <input
                       type="text"
                       value={editAddress}
-                      onChange={(e) => setEditAddress(e.target.value)}
-                      placeholder="주소를 입력하세요"
+                      readOnly // <-- 직접 입력 불가 처리
                       className={styles.editInput}
+                      placeholder="주소 검색 버튼을 눌러 입력하세요"
                     />
                     <button
                       type="button"
@@ -607,6 +607,7 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+
 
               {isEditing && (
                 <div className={styles.saveButtons}>

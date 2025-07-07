@@ -22,7 +22,21 @@ import { useGroupPermissions } from  "@/app/components/hooks/usegrouppermissiont
 import { useParams } from 'next/navigation';
 import { ko } from 'date-fns/locale'
 import { registerLocale } from 'react-datepicker';
+import { createPortal } from 'react-dom';
 registerLocale('ko', ko);
+
+function ModalPortal({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  if (!mounted || !isOpen) return null
+
+  return createPortal(children, document.body)
+}
 
 interface Schedule {
   id: number;
@@ -67,7 +81,7 @@ export default function CalendarPage() {
     const fetchMyInfo = async () => {
       try {
         const res = await api.get("/users/me");
-        setCurrentUserName(res.data.result.name); // username or name
+        setCurrentUserName(res.data.result.name); 
       } catch (err) {
         console.error("내 정보 불러오기 실패:", err);
       }
@@ -348,8 +362,8 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {modalVisible && (
-        <div className={styles.modalOverlay} onClick={closeModal}>
+      <ModalPortal isOpen={modalVisible}>
+        <div className={styles.mediaModal} onClick={closeModal}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <h3 style={{ textAlign: 'center', marginBottom: 16 }}>
               {isEditing ? '일정 수정하기' : '일정 만들기'}
@@ -428,7 +442,7 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
-      )}
+      </ModalPortal>
     </div >
   );
 }

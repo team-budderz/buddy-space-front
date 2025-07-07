@@ -454,22 +454,30 @@ export default function MembersPage() {
   }
 
   const withdrawFromGroup = async () => {
-    if (!confirm(
-      "정말로 이 모임에서 탈퇴하시겠습니까?\n탈퇴 후에는 다시 가입 요청을 하거나, \n비공개 모임일 경우 초대 링크로만 참여할 수 있습니다.",
-    )) return
+    if (
+      !confirm(
+        "정말로 이 모임에서 탈퇴하시겠습니까?\n탈퇴 후에는 다시 가입 요청을 하거나, \n비공개 모임일 경우 초대 링크로만 참여할 수 있습니다."
+      )
+    )
+      return
 
     try {
       const headers = await getAuthHeaders()
-      // 모임 탈퇴
+
+      // 1. 채팅방 나가기 먼저 처리
+      try {
+        const rooms = await fetchChatRooms()
+        const groupRoomId = findGroupRoomId(rooms)
+        if (groupRoomId) {
+          await leaveChatRoom(groupRoomId)
+        }
+      } catch (e) {
+        console.warn("채팅방 나가기 실패 - 무시하고 탈퇴 계속 진행:", e)
+      }
+
+      // 2. 모임 탈퇴
       await api.delete(`/groups/${groupId}/withdraw`, { headers })
       showToast("모임에서 탈퇴되었습니다.")
-
-      // 채팅방에서도 나가기 처리
-      const rooms = await fetchChatRooms()
-      const groupRoomId = findGroupRoomId(rooms)
-      if (groupRoomId) {
-        await leaveChatRoom(groupRoomId)
-      }
 
       setTimeout(() => router.push("/meeting"), 1500)
     } catch (error: any) {
@@ -477,6 +485,7 @@ export default function MembersPage() {
       showToast(`탈퇴 실패: ${error.response?.data?.message || "알 수 없는 오류"}`, "error")
     }
   }
+
 
   const closeModal = () => {
     setShowProfileModal(false)
