@@ -485,7 +485,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
         console.error("[deleteMessage] 삭제 오류:", error)
       }
     },
-    [roomId, isConnected],
+    [roomId, isConnected, currentUserId],
   )
 
   // 읽음 처리
