@@ -133,11 +133,10 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
             // 삭제 이벤트 처리
             if (payload.event === "message:deleted") {
-              console.log("[WebSocket] 메시지 삭제:", payload.data.messageId)
-              setMessages((prev) => prev.filter((m) => m.messageId !== payload.data.messageId))
+              console.log("[WebSocket] 삭제 알림 수신:", payload.data.messageId)
+              setMessages(prev => prev.filter(m => m.messageId !== payload.data.messageId))
               return
             }
-
             // 새 메시지 처리 (직접 형식)
             if (payload.messageId && payload.senderId && payload.content) {
               const msg = payload as Message
@@ -471,11 +470,11 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
         client.publish({
           destination: `/pub/chat/rooms/${roomId}/messages/${messageId}`,
           body: JSON.stringify({
-            event: "message:delete",    
+            event: "message:delete",
             data: {
-              roomId,                  
-              messageId,              
-              senderId: currentUserId, 
+              roomId,
+              messageId,
+              senderId: currentUserId,
             }
           }),
         })
