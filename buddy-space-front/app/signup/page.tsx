@@ -5,7 +5,6 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
-import api from '@/app/api'
 import styles from "./signup.module.css"
 import Link from "next/link"
 
