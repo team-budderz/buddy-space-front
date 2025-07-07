@@ -113,18 +113,17 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     if (!token) return;
     setIsLoading(true);
 
-    const wsUrl = CHAT_BASE.replace(/^http/, 'ws') + `/ws?access_token=${token}`;
-
+    const socket = new SockJS(`${CHAT_BASE}/ws?access_token=${token}`);
     const client = new Client({
-      brokerURL: wsUrl,
+      // 브로커 URL 대신 webSocketFactory 사용
+      webSocketFactory: () => socket,
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-      debug: (msg) => console.log('[WebSocket]', msg),
-
+      debug: (msg) => console.log("[WebSocket]", msg),
       onConnect: () => {
-        console.log('[WebSocket] 연결 성공');
+        console.log("[WebSocket] 연결 성공");
         setIsConnected(true);
         setIsLoading(false);
 
