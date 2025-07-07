@@ -113,7 +113,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     if (!token) return
     setIsLoading(true)
 
-    const socket = new SockJS(`${CHAT_BASE}/ws?access_token=${token}`);
+    const socket = new SockJS(`/ws?access_token=${token}`)
     const client = new Client({
       webSocketFactory: () => socket,
       connectHeaders: { Authorization: `Bearer ${token}` },
