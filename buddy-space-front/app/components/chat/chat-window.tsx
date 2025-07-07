@@ -290,7 +290,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/groups/${groupId}/members`, {
+      const res = await fetch(`${API_BASE}/groups/${groupId}/members`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -317,7 +317,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/messages?page=0&size=50`, {
+      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/messages?page=0&size=50`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -343,7 +343,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/members`, {
+      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/members`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -362,7 +362,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants`, {
+      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/participants`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -391,7 +391,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants/${userId}`, {
+      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/participants/${userId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -415,7 +415,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     const token = getAuthToken()
     if (!token) return
     try {
-      const res = await fetch(`${API_BASE}/api/group/${groupId}/chat/rooms/${roomId}/participants/me`, {
+      const res = await fetch(`${API_BASE}/group/${groupId}/chat/rooms/${roomId}/participants/me`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })
