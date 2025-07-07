@@ -84,7 +84,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
   const stompClientRef = useRef<Client | null>(null)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!
-  const CHAT_BASE    = process.env.NEXT_PUBLIC_CHAT_BASE_URL!  
+  const CHAT_BASE = process.env.NEXT_PUBLIC_CHAT_BASE_URL!
 
   const getAuthToken = () => localStorage.getItem("accessToken")?.replace(/^"|"$/g, "")
 
@@ -132,7 +132,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
             console.log("[WebSocket] 메시지 데이터:", payload)
 
             // 삭제 이벤트 처리
-            if (payload.event === "message:delete") {
+            if (payload.event === "message:deleted") {
               console.log("[WebSocket] 메시지 삭제:", payload.data.messageId)
               setMessages((prev) => prev.filter((m) => m.messageId !== payload.data.messageId))
               return
@@ -469,8 +469,15 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
       try {
         client.publish({
-          destination: `/pub/chat/rooms/${roomId}/delete`,
-          body: JSON.stringify({ messageId: messageId }),
+          destination: `/pub/chat/rooms/${roomId}/messages/${messageId}`,
+          body: JSON.stringify({
+            event: "message:delete",
+            data: {
+              roomId,
+              messageId,
+              senderId: currentUserId,
+            }
+          }),
         })
 
         console.log("[deleteMessage] 삭제 요청 전송 완료")
