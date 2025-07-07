@@ -309,58 +309,61 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      {detailVisible && detailData && (
+      <ModalPortal isOpen={detailVisible}>
         <div className={styles.modalOverlay} onClick={closeDetail}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <div className={styles.detailHeader}>
-              <div className={styles.authorInfo}>
-                <img
-                  src={detailData.authorImageUrl || '/avatar.png'}
-                  alt="avatar"
-                  className={styles.avatar}
-                />
-                <div>
-                  <div className={styles.authorName}>{detailData.authorName}</div>
-                  <div className={styles.postDate}>
-                    {format(parseISO(detailData.createdAt), 'yyyy년 MM월 dd일')}
+            {detailData && (
+              <>
+                <div className={styles.detailHeader}>
+                  <div className={styles.authorInfo}>
+                    <img
+                      src={detailData.authorImageUrl || '/avatar.png'}
+                      alt="avatar"
+                      className={styles.avatar}
+                    />
+                    <div>
+                      <div className={styles.authorName}>{detailData.authorName}</div>
+                      <div className={styles.postDate}>
+                        {format(parseISO(detailData.createdAt), 'yyyy년 MM월 dd일')}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              {detailData.authorName === currentUserName && (
-                <div className={styles.menuWrapper}>
-                  <button
-                    className={styles.menuBtn}
-                    onClick={() => setMenuVisible(v => !v)}
-                  >
-                    ⋮
-                  </button>
-                  {menuVisible && (
-                    <div className={styles.menuList}>
-                      <button onClick={() => selectedScheduleId && openEditModal(selectedScheduleId)}>
-                        수정하기
+                  {detailData.authorName === currentUserName && (
+                    <div className={styles.menuWrapper}>
+                      <button
+                        className={styles.menuBtn}
+                        onClick={() => setMenuVisible(v => !v)}
+                      >
+                        ⋮
                       </button>
-                      <button onClick={() => selectedScheduleId && handleDelete(selectedScheduleId)}>
-                        삭제하기
-                      </button>
+                      {menuVisible && (
+                        <div className={styles.menuList}>
+                          <button onClick={() => selectedScheduleId && openEditModal(selectedScheduleId)}>
+                            수정하기
+                          </button>
+                          <button onClick={() => selectedScheduleId && handleDelete(selectedScheduleId)}>
+                            삭제하기
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
 
-            </div>
-
-            <div className={styles.detailBody}>
-              <h3>기간 </h3>
-              <div className={styles.detailDates}>
-                {format(parseISO(detailData.startAt), 'yyyy.MM.dd HH:mm')} ~{' '}
-                {format(parseISO(detailData.endAt), 'yyyy.MM.dd HH:mm')}
-              </div>
-              <h3 className={styles.detailTitle}>일정 : {detailData.title}</h3>
-              <div className={styles.detailContent}>{detailData.content}</div>
-            </div>
+                <div className={styles.detailBody}>
+                  <h3>기간 </h3>
+                  <div className={styles.detailDates}>
+                    {format(parseISO(detailData.startAt), 'yyyy.MM.dd HH:mm')} ~{' '}
+                    {format(parseISO(detailData.endAt), 'yyyy.MM.dd HH:mm')}
+                  </div>
+                  <h3 className={styles.detailTitle}>일정 : {detailData.title}</h3>
+                  <div className={styles.detailContent}>{detailData.content}</div>
+                </div>
+              </>
+            )}
           </div>
         </div>
-      )}
+      </ModalPortal>
 
       <ModalPortal isOpen={modalVisible}>
         <div className={styles.mediaModal} onClick={closeModal}>
