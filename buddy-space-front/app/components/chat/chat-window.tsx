@@ -84,7 +84,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
   const stompClientRef = useRef<Client | null>(null)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!
-  const CHAT_BASE    = process.env.NEXT_PUBLIC_CHAT_BASE_URL!  
+  const CHAT_BASE = process.env.NEXT_PUBLIC_CHAT_BASE_URL!
 
   const getAuthToken = () => localStorage.getItem("accessToken")?.replace(/^"|"$/g, "")
 
@@ -480,6 +480,8 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     },
     [roomId, isConnected],
   )
+
+
 
   // 읽음 처리
   const markAsRead = useCallback(

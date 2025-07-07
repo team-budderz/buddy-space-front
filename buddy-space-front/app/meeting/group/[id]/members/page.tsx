@@ -302,52 +302,45 @@ export default function MembersPage() {
         alert("로그인이 필요합니다.")
         return
       }
-
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      }
-
+      const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
       if (!currentUser) {
         alert("사용자 정보가 없습니다.")
         return
       }
 
-      // 현재 그룹 내 채팅방 목록 조회
-      const roomsRes = await api.get(`/group/${groupId}/chat/rooms/my`, { headers })
-      const chatRooms = roomsRes.data.result
+      let roomId: number
 
-      // 동일한 사람과 1:1 채팅방이 이미 있는지 확인
-      const alreadyExists = chatRooms.some((room: any) => {
-        if (room.roomType !== "DIRECT") return false
-        const participantIds = room.participants.map((p: any) => p.id).sort()
-        const targetIds = [currentUser.id, memberId].sort()
-        return JSON.stringify(participantIds) === JSON.stringify(targetIds)
-      })
-
-      if (alreadyExists) {
-        alert(`${memberName}님과의 1:1 채팅방은 이미 존재합니다.`)
-        return
+      // 1) 무조건 생성 시도
+      try {
+        const res = await axios.post(
+          `${API_BASE}/group/${groupId}/chat/rooms`,
+          {
+            name: `${currentUser.name}와 ${memberName}의 채팅`,
+            description: "1:1 대화방",
+            chatRoomType: "DIRECT",
+            participantIds: [currentUser.id, memberId],
+          },
+          { headers, withCredentials: true }
+        )
+        roomId = res.data.result.roomId
+      } catch (err: any) {
+        if (err.response?.status === 409) {
+          // 2) Conflict 나면, 기존 방 ID 찾기
+          const listRes = await api.get(`/group/${groupId}/chat/rooms/my`, { headers })
+          const chatRooms = listRes.data.result as any[]
+          const direct = chatRooms.find(r => {
+            if (r.chatRoomType !== "DIRECT") return false
+            const ids = r.participants.map((p: any) => p.id).sort()
+            return JSON.stringify(ids) === JSON.stringify([currentUser.id, memberId].sort())
+          })
+          if (!direct) throw new Error("기존 1:1 방을 찾을 수 없습니다.")
+          roomId = direct.roomId
+        } else {
+          throw err
+        }
       }
 
-      // 존재하지 않으면 새 채팅방 생성
-      const response = await axios.post(
-        `${API_BASE}/group/${groupId}/chat/rooms`,
-        {
-          name: `${currentUser.name}와 ${memberName}의 채팅`,
-          description: "1:1 대화방",
-          chatRoomType: "DIRECT",
-          participantIds: [currentUser.id, memberId],
-        },
-        {
-          headers,
-          withCredentials: true,
-        }
-      )
-
-      const roomId = response.data.result.roomId
-
-      // 생성된 채팅방 열기
+      // 3) 만든 방 혹은 기존 방으로 이동/오픈
       window.dispatchEvent(
         new CustomEvent("openDirectChat", {
           detail: {
@@ -358,18 +351,12 @@ export default function MembersPage() {
           },
         })
       )
-
       closeModal()
     } catch (err: any) {
-      if (err?.response?.status === 409) {
-        return
-      }
-
       console.error("1:1 채팅방 열기 실패", err)
       alert("1:1 채팅방 열기 실패")
     }
   }
-
 
 
   const handleAuthError = () => {
