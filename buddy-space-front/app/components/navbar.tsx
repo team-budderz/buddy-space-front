@@ -205,9 +205,17 @@ export default function NavBar() {
 
     newEventSource.onerror = (event) => {
       console.error("SSE 연결 오류 또는 종료", event);
+
+      if (newEventSource.readyState === EventSource.CLOSED) {
+        console.warn("SSE 연결이 닫혔습니다.");
+      } else if (newEventSource.readyState === EventSource.CONNECTING) {
+        console.warn("SSE 재연결 시도 중입니다.");
+      }
+
       newEventSource.close();
       setTimeout(connectNotificationSSE, 5000);
     };
+
 
     setSseEventSource(newEventSource);
   }
