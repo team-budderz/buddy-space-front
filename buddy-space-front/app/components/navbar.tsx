@@ -16,6 +16,7 @@ export interface ChatRoom {
   groupId?: number
 }
 
+
 interface Notification {
   notificationId: number
   content: string
@@ -26,15 +27,14 @@ interface Notification {
 }
 
 export default function NavBar() {
-  const [userInfo, setUserInfo] = useState<{ id: number; profileImageUrl?: string; [key: string]: any } | null>(null)
+  const [userInfo, setUserInfo] = useState<{ id: number; profileImageUrl?: string;[key: string]: any } | null>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notificationCount, setNotificationCount] = useState(0)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
 
   const [currentPage, setCurrentPage] = useState(0)
   const [lastPage, setLastPage] = useState(false)
-  // EventSource 상태는 useRef로 관리하는 게 안전합니다.
-  const sseEventSourceRef = useRef<EventSource | null>(null)
+  const [sseEventSource, setSseEventSource] = useState<EventSource | null>(null)
 
   const notificationDropdownRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -54,26 +54,72 @@ export default function NavBar() {
   }
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  const redirectToLogin = useCallback(() => {
+  const redirectToLogin = () => {
     router.push("/login")
-  }, [router])
+  }
 
-  const logoutUser = useCallback(() => {
+  const logoutUser = () => {
     localStorage.removeItem("accessToken")
-    if (sseEventSourceRef.current) {
-      sseEventSourceRef.current.close()
-      sseEventSourceRef.current = null
+    if (sseEventSource) {
+      sseEventSource.close();
     }
     router.push("/login")
-  }, [router])
+  }
 
-  // 채팅방 로드 함수 useCallback으로 메모이제이션
+  useEffect(() => {
+    if (!localStorage.getItem("accessToken")) {
+      redirectToLogin()
+      return
+    }
+
+    const fetchUser = async () => {
+      try {
+        const res = await api.get("/users/me", { withCredentials: true })
+        setUserInfo(res.data.result)
+      } catch (err: any) {
+        console.error("유저 정보 오류:", err)
+        redirectToLogin()
+      }
+    }
+
+    fetchUser()
+    loadAllChatRooms()
+    connectNotificationSSE();
+
+
+    return () => {
+      if (sseEventSource) {
+        sseEventSource.close();
+      }
+    }
+  }, [])
+
+
+  const handleSearch = () => {
+    const keyword = searchInputRef.current?.value.trim()
+    if (keyword) {
+      router.push(`/search?keyword=${encodeURIComponent(keyword)}`)
+    }
+  }
+
+  async function getAuthHeaders(): Promise<{ Authorization: string; "Content-Type": string }> {
+    const token = localStorage.getItem("accessToken")
+    if (!token) {
+      throw new Error("토큰이 없습니다. 로그인해주세요.");
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    }
+  }
+
   const loadAllChatRooms = useCallback(async () => {
     setIsLoadingChats(true);
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) throw new Error("토큰이 없습니다.");
 
+      // 1) 내가 속한 그룹 목록 조회
       const groupsRes = await fetch(`${API_BASE}/groups/my`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -88,6 +134,7 @@ export default function NavBar() {
         const groupId = group.groupId || group.id;
         if (!groupId) continue;
 
+        // 2) 채팅 방 목록 조회 (여기서는 ID·이름만 들어옴)
         const chatRes = await fetch(
             `${API_BASE}/group/${groupId}/chat/rooms/my`,
             { headers: { Authorization: `Bearer ${token}` } }
@@ -96,8 +143,10 @@ export default function NavBar() {
         const chatData = await chatRes.json();
         if (!Array.isArray(chatData.result)) continue;
 
+        // 3) 각 방에 대해 상세 조회 → 정확한 type 가져오기
         const detailedRooms = await Promise.all(
             chatData.result.map(async (room: any) => {
+              // 상세 조회
               const detailRes = await fetch(
                   `${API_BASE}/group/${groupId}/chat/rooms/${room.roomId}`,
                   { headers: { Authorization: `Bearer ${token}` } }
@@ -125,53 +174,12 @@ export default function NavBar() {
     }
   }, []);
 
-  // 알림 불러오기 함수 useCallback으로 감싸기
-  const fetchNotifications = useCallback(async (page = 0) => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) return { content: [], last: true, number: 0 };
-    try {
-      const response = await api.get(`/notifications?page=${page}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      return response.data.result;
-    } catch (error) {
-      console.error("알림 목록 요청 중 오류:", error);
-      return { content: [], last: true, number: 0 };
-    }
-  }, []);
-
-  // 초기 알림 불러오기
-  const loadInitialNotifications = useCallback(async () => {
-    setIsLoadingNotifications(true);
-    const data = await fetchNotifications(0);
-    setNotifications(data.content);
-    setLastPage(data.last);
-    setCurrentPage(data.number + 1);
-    const unreadCount = data.content.filter((n: Notification) => !n.isRead).length;
-    setNotificationCount(unreadCount);
-    setIsLoadingNotifications(false);
-  }, [fetchNotifications]);
-
-  // 추가 알림 불러오기
-  const loadMoreNotifications = useCallback(async () => {
-    if (lastPage || isLoadingNotifications) return;
-    setIsLoadingNotifications(true);
-    const data = await fetchNotifications(currentPage);
-    setNotifications(prev => [...prev, ...data.content]);
-    setLastPage(data.last);
-    setCurrentPage(data.number + 1);
-    setIsLoadingNotifications(false);
-  }, [currentPage, fetchNotifications, isLoadingNotifications, lastPage]);
-
-  // SSE 연결 함수
-  const connectNotificationSSE = useCallback(() => {
+  const connectNotificationSSE = () => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
 
-    // 기존 연결 닫기
-    if (sseEventSourceRef.current) {
-      sseEventSourceRef.current.close();
-      sseEventSourceRef.current = null;
+    if (sseEventSource) {
+      sseEventSource.close();
     }
 
     let clientId = localStorage.getItem('clientId');
@@ -185,9 +193,9 @@ export default function NavBar() {
         { withCredentials: true }
     );
 
-    newEventSource.onopen = () => {
-      console.log("SSE 연결 성공");
-    };
+    newEventSource.addEventListener("connect", (event) => {
+      console.log("SSE 연결 성공:", event.data);
+    });
 
     newEventSource.addEventListener("notification", async (event) => {
       const notification = JSON.parse(event.data);
@@ -198,48 +206,50 @@ export default function NavBar() {
     newEventSource.onerror = (event) => {
       console.error("SSE 연결 오류 또는 종료", event);
       newEventSource.close();
-      sseEventSourceRef.current = null;
-      setTimeout(() => {
-        connectNotificationSSE();
-      }, 5000);
+      setTimeout(connectNotificationSSE, 5000);
     };
 
-    sseEventSourceRef.current = newEventSource;
-  }, [loadInitialNotifications]);
+    setSseEventSource(newEventSource);
+  }
 
-  // useEffect - 마운트 시 유저 정보, 채팅방, SSE 연결
-  useEffect(() => {
-    if (!localStorage.getItem("accessToken")) {
-      redirectToLogin();
-      return;
+  const fetchNotifications = async (page = 0) => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return { content: [], last: true, number: 0 };
+    try {
+      const response = await api.get(`/notifications?page=${page}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data.result;
+    } catch (error) {
+      console.error("알림 목록 요청 중 오류:", error);
+      return { content: [], last: true, number: 0 };
     }
+  };
 
-    const fetchUser = async () => {
-      try {
-        const res = await api.get("/users/me", { withCredentials: true });
-        setUserInfo(res.data.result);
-      } catch (err: any) {
-        console.error("유저 정보 오류:", err);
-        redirectToLogin();
-      }
-    };
+  const loadInitialNotifications = async () => {
+    setIsLoadingNotifications(true);
+    const data = await fetchNotifications(0);
+    setNotifications(data.content);
+    setLastPage(data.last);
+    setCurrentPage(data.number + 1);
+    const unreadCount = data.content.filter((n: Notification) => !n.isRead).length;
+    setNotificationCount(unreadCount);
+    setIsLoadingNotifications(false);
+  };
 
-    fetchUser();
-    loadAllChatRooms();
-    connectNotificationSSE();
+  const loadMoreNotifications = async () => {
+    if (lastPage || isLoadingNotifications) return;
+    setIsLoadingNotifications(true);
+    const data = await fetchNotifications(currentPage);
+    setNotifications(prev => [...prev, ...data.content]);
+    setLastPage(data.last);
+    setCurrentPage(data.number + 1);
+    setIsLoadingNotifications(false);
+  };
 
-    return () => {
-      if (sseEventSourceRef.current) {
-        sseEventSourceRef.current.close();
-        sseEventSourceRef.current = null;
-      }
-    };
-  }, [connectNotificationSSE, loadAllChatRooms, redirectToLogin]);
-
-  // IntersectionObserver
   useEffect(() => {
     const observer = new IntersectionObserver(
-        (entries) => {
+        entries => {
           if (entries[0].isIntersecting) {
             loadMoreNotifications();
           }
@@ -256,26 +266,25 @@ export default function NavBar() {
         observer.unobserve(sentinelRef.current);
       }
     };
-  }, [loadMoreNotifications]);
+  }, [sentinelRef, loadMoreNotifications]);
 
-  // 시간 표시 함수
+
   const formatNotificationTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffTime = now.getTime() - date.getTime()
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
 
     if (diffHours < 24) {
-      return `${diffHours}시간 전`;
+      return `${diffHours}시간 전`
     } else if (diffDays < 7) {
-      return `${diffDays}일 전`;
+      return `${diffDays}일 전`
     } else {
-      return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+      return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" })
     }
-  };
+  }
 
-  // 알림 URL 변환
   const convertApiUrlToPageUrl = (apiUrl: string) => {
     const postMatch = apiUrl.match(/^\/api\/groups\/(\d+)\/posts\/(\d+)$/);
     if (postMatch) {
@@ -284,9 +293,8 @@ export default function NavBar() {
       return `/meeting/group/${groupId}/post/${postId}`;
     }
     return apiUrl;
-  };
+  }
 
-  // 알림 클릭 핸들러
   const handleNotificationClick = async (notification: Notification) => {
     const { notificationId, url, isRead } = notification;
     if (!isRead) {
@@ -304,13 +312,6 @@ export default function NavBar() {
     }
     const pageUrl = convertApiUrlToPageUrl(url);
     router.push(pageUrl);
-  };
-
-  const handleSearch = () => {
-    const keyword = searchInputRef.current?.value.trim();
-    if (keyword) {
-      router.push(`/search?keyword=${encodeURIComponent(keyword)}`);
-    }
   };
 
   return (
@@ -332,7 +333,7 @@ export default function NavBar() {
                   placeholder="모임 이름 검색"
                   className={styles.searchInput}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSearch();
+                    if (e.key === "Enter") handleSearch()
                   }}
               />
               <button className={styles.searchButton} onClick={handleSearch}>
@@ -359,11 +360,7 @@ export default function NavBar() {
                     ) : (
                         <div className={styles.notificationList}>
                           {notifications.map((notification) => (
-                              <div
-                                  key={notification.notificationId}
-                                  className={`${styles.notificationItem} ${notification.isRead ? '' : styles.unread}`}
-                                  onClick={() => handleNotificationClick(notification)}
-                              >
+                              <div key={notification.notificationId} className={`${styles.notificationItem} ${notification.isRead ? '' : styles.unread}`} onClick={() => handleNotificationClick(notification)}>
                                 <div className={styles.notificationContent}>
                                   <div className={styles.notificationText}>{notification.content}</div>
                                   <div className={styles.notificationMeta}>
@@ -408,8 +405,10 @@ export default function NavBar() {
                                   <div className={styles.chatItemContent}>
                                     <div className={styles.chatItemHeader}>
                               <span className={styles.chatRoomName}>
-                                {`${room.roomType === "GROUP" ? "🏠" : "💬"} ${room.roomName}`}
+                                {`${room.roomType === "GROUP" ? "🏠" : "💬"
+                                } ${room.roomName}`}
                               </span>
+
                                     </div>
                                   </div>
                                 </div>
@@ -420,6 +419,7 @@ export default function NavBar() {
                   }
               />
             </div>
+
 
             <Dropdown
                 icon={
@@ -461,6 +461,7 @@ export default function NavBar() {
               그룹 ID가 없어 채팅을 불러올 수 없습니다.
             </div>
         )}
+
       </>
   )
 }
