@@ -365,7 +365,7 @@ export default function CalendarPage() {
         </div>
       </ModalPortal>
 
-      <ModalPortal isOpen={modalVisible}>
+      <ModalPortal isOpen={detailVisible}>
         <div className={styles.mediaModal} onClick={closeModal}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <h3 style={{ textAlign: 'center', marginBottom: 16 }}>
