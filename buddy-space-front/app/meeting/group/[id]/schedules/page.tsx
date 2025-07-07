@@ -365,8 +365,8 @@ export default function CalendarPage() {
         </div>
       </ModalPortal>
 
-      <ModalPortal isOpen={detailVisible}>
-        <div className={styles.mediaModal} onClick={closeModal}>
+      <ModalPortal isOpen={modalVisible}>
+        <div className={styles.modalOverlay} onClick={closeModal}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <h3 style={{ textAlign: 'center', marginBottom: 16 }}>
               {isEditing ? '일정 수정하기' : '일정 만들기'}
