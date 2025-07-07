@@ -137,6 +137,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
               setMessages((prev) => prev.filter((m) => m.messageId !== payload.data.messageId))
               return
             }
+
             // 새 메시지 처리 (직접 형식)
             if (payload.messageId && payload.senderId && payload.content) {
               const msg = payload as Message
@@ -459,33 +460,27 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
   const deleteMessage = useCallback(
     (messageId: number, event?: React.MouseEvent) => {
-      if (event) event.stopPropagation();
+      if (event) event.stopPropagation()
 
-      const client = stompClientRef.current;
-      if (!client || !isConnected) return;
+      const client = stompClientRef.current
+      if (!client || !isConnected) return
 
-      // ———— 여기에 큰솔 추가 ————
-      console.group("[deleteMessage] 삭제 요청 디버그");
-      console.log("• destination:", `/pub/chat/rooms/${roomId}/delete`);
-      console.log("• headers:", { "content-type": "application/json" });
-      console.log("• body:", { messageId });
-      console.groupEnd();
-      // —————————————————————————
+      console.log("[deleteMessage] 메시지 삭제 요청:", messageId)
 
       try {
         client.publish({
           destination: `/pub/chat/rooms/${roomId}/delete`,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ messageId }),
-        });
+          body: JSON.stringify({ messageId: messageId }),
+        })
 
-        console.log("[deleteMessage] 삭제 요청 전송 완료");
+        console.log("[deleteMessage] 삭제 요청 전송 완료")
       } catch (error) {
-        console.error("[deleteMessage] 삭제 오류:", error);
+        console.error("[deleteMessage] 삭제 오류:", error)
       }
     },
     [roomId, isConnected],
-  );
+  )
+
 
 
   // 읽음 처리
