@@ -14,14 +14,14 @@ app.prepare().then(() => {
   server.use(
     '/api',
     createProxyMiddleware({
-      target: process.env.NEXT_PUBLIC_API_BASE_URL,
+      target: process.env.NEXT_PUBLIC_CHAT_BASE_URL,
       changeOrigin: true,
     })
   )
 
   // WS/SockJS 프록시
   const wsProxy = createProxyMiddleware('/ws', {
-    target: process.env.NEXT_PUBLIC_API_BASE_URL,
+    target: process.env.NEXT_PUBLIC_CHAT_BASE_URL,
     changeOrigin: true,
     ws: true,
     pathRewrite: { '^/ws': '/ws' },
