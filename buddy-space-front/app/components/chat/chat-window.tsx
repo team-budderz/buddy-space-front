@@ -109,29 +109,22 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
   // WebSocket 연결 및 구독 설정
   const connectWebSocket = () => {
-    const token = getAuthToken();
-    if (!token) return;
-    setIsLoading(true);
+    const token = getAuthToken()
+    if (!token) return
+    setIsLoading(true)
 
-    // 1) CHAT_BASE에서 쿼리스트링 제거
-    const cleanBase = CHAT_BASE.split('?')[0];  // or CHAT_BASE.replace(/\?.*$/, '')
-
-    // 2) SockJS는 쿼리 없이 ws 엔드포인트만 지정
-    const socket = new SockJS(`${cleanBase}/ws`);
-
+    const socket = new SockJS(`${CHAT_BASE}/ws?access_token=${token}`)
     const client = new Client({
       webSocketFactory: () => socket,
-      connectHeaders: {
-        Authorization: `Bearer ${token}`,  // STOMP CONNECT 헤더로만 토큰 전달
-      },
+      connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       debug: (msg) => console.log("[WebSocket]", msg),
       onConnect: () => {
-        console.log("[WebSocket] 연결 성공");
-        setIsConnected(true);
-        setIsLoading(false);
+        console.log("[WebSocket] 연결 성공")
+        setIsConnected(true)
+        setIsLoading(false)
 
         // 메시지 수신 구독
         client.subscribe(`/sub/chat/rooms/${roomId}/messages`, ({ body }) => {
@@ -140,9 +133,10 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
             console.log("[WebSocket] 메시지 데이터:", payload)
 
             // 삭제 이벤트 처리
-            if (payload.event === "message:delete" || payload.event === "message:deleted") {
-              setMessages(prev => prev.filter(m => m.messageId !== payload.data.messageId));
-              return;
+            if (payload.event === "message:delete") {
+              console.log("[WebSocket] 메시지 삭제:", payload.data.messageId)
+              setMessages((prev) => prev.filter((m) => m.messageId !== payload.data.messageId))
+              return
             }
 
             // 새 메시지 처리 (직접 형식)
@@ -169,6 +163,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
             console.error("[WebSocket] 메시지 파싱 오류:", error)
           }
         })
+
 
         // 실시간 읽음 상태 구독 - 개별 읽음 업데이트
         client.subscribe(`/sub/chat/rooms/${roomId}/read`, ({ body }) => {
