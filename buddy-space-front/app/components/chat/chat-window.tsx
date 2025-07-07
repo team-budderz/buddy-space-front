@@ -456,30 +456,32 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
       console.error("[sendMessage] 전송 오류:", error)
     }
   }, [newMessage, isConnected, roomId, currentUserId])
-
+  
   const deleteMessage = useCallback(
     (messageId: number, event?: React.MouseEvent) => {
-      if (event) event.stopPropagation()
+      if (event) event.stopPropagation();
 
-      const client = stompClientRef.current
-      if (!client || !isConnected) return
+      const client = stompClientRef.current;
+      if (!client || !isConnected) return;
 
-      console.log("[deleteMessage] 메시지 삭제 요청:", messageId)
+      console.log("[deleteMessage] 메시지 삭제 요청:", messageId);
 
       try {
         client.publish({
           destination: `/pub/chat/rooms/${roomId}/delete`,
-          body: JSON.stringify({ messageId: messageId }),
-        })
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ messageId }),
+        });
 
-        console.log("[deleteMessage] 삭제 요청 전송 완료")
+        console.log("[deleteMessage] 삭제 요청 전송 완료");
       } catch (error) {
-        console.error("[deleteMessage] 삭제 오류:", error)
+        console.error("[deleteMessage] 삭제 오류:", error);
       }
     },
     [roomId, isConnected],
-  )
-
+  );
   // 읽음 처리
   const markAsRead = useCallback(
     (messageId: number) => {
