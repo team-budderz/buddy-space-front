@@ -460,7 +460,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
   const deleteMessage = useCallback(
     (messageId: number, event?: React.MouseEvent) => {
-      if (event) event.stopPropagation()
+      event?.stopPropagation()
 
       const client = stompClientRef.current
       if (!client || !isConnected) return
@@ -471,11 +471,11 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
         client.publish({
           destination: `/pub/chat/rooms/${roomId}/messages/${messageId}`,
           body: JSON.stringify({
-            event: "message:delete",
+            event: "message:delete",    
             data: {
-              roomId,
-              messageId,
-              senderId: currentUserId,
+              roomId,                  
+              messageId,              
+              senderId: currentUserId, 
             }
           }),
         })
@@ -487,6 +487,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     },
     [roomId, isConnected, currentUserId],
   )
+
 
   // 읽음 처리
   const markAsRead = useCallback(
