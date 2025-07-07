@@ -132,9 +132,9 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
             console.log("[WebSocket] 메시지 데이터:", payload)
 
             // 삭제 이벤트 처리
-            if (payload.event === "message:deleted") {
-              console.log("[WebSocket] 삭제 알림 수신:", payload.data.messageId)
-              setMessages(prev => prev.filter(m => m.messageId !== payload.data.messageId))
+            if (payload.event === "message:delete") {
+              console.log("[WebSocket] 메시지 삭제:", payload.data.messageId)
+              setMessages((prev) => prev.filter((m) => m.messageId !== payload.data.messageId))
               return
             }
             // 새 메시지 처리 (직접 형식)
@@ -459,7 +459,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
   const deleteMessage = useCallback(
     (messageId: number, event?: React.MouseEvent) => {
-      event?.stopPropagation()
+      if (event) event.stopPropagation()
 
       const client = stompClientRef.current
       if (!client || !isConnected) return
@@ -468,15 +468,8 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
 
       try {
         client.publish({
-          destination: `/pub/chat/rooms/${roomId}/messages/${messageId}`,
-          body: JSON.stringify({
-            event: "message:delete",
-            data: {
-              roomId,
-              messageId,
-              senderId: currentUserId,
-            }
-          }),
+          destination: `/pub/chat/rooms/${roomId}/delete`,
+          body: JSON.stringify({ messageId: messageId }),
         })
 
         console.log("[deleteMessage] 삭제 요청 전송 완료")
@@ -484,9 +477,8 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
         console.error("[deleteMessage] 삭제 오류:", error)
       }
     },
-    [roomId, isConnected, currentUserId],
+    [roomId, isConnected],
   )
-
 
   // 읽음 처리
   const markAsRead = useCallback(
