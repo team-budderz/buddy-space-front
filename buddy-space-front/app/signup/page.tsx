@@ -97,7 +97,11 @@ export default function SignupPage() {
     }
 
     try {
-      await api.post("/users/signup", form)
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/users/signup`,
+        form,
+        { headers: { "Content-Type": "application/json" } } // Authorization 없음
+      )
       setServerMessage("회원가입 성공! 로그인 페이지로 이동합니다.")
       setMessageType("success")
       setTimeout(() => router.push("/login"), 1500)
