@@ -456,7 +456,7 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
       console.error("[sendMessage] 전송 오류:", error)
     }
   }, [newMessage, isConnected, roomId, currentUserId])
-  
+
   const deleteMessage = useCallback(
     (messageId: number, event?: React.MouseEvent) => {
       if (event) event.stopPropagation();
@@ -464,14 +464,18 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
       const client = stompClientRef.current;
       if (!client || !isConnected) return;
 
-      console.log("[deleteMessage] 메시지 삭제 요청:", messageId);
+      // ———— 여기에 큰솔 추가 ————
+      console.group("[deleteMessage] 삭제 요청 디버그");
+      console.log("• destination:", `/pub/chat/rooms/${roomId}/delete`);
+      console.log("• headers:", { "content-type": "application/json" });
+      console.log("• body:", { messageId });
+      console.groupEnd();
+      // —————————————————————————
 
       try {
         client.publish({
           destination: `/pub/chat/rooms/${roomId}/delete`,
-          headers: {
-            "content-type": "application/json",
-          },
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({ messageId }),
         });
 
@@ -482,6 +486,8 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
     },
     [roomId, isConnected],
   );
+
+
   // 읽음 처리
   const markAsRead = useCallback(
     (messageId: number) => {
