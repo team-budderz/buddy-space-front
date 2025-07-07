@@ -128,33 +128,23 @@ export default function ChatWindow({ roomId, roomName, roomType, groupId, onClos
         // 메시지 수신 구독
         client.subscribe(`/sub/chat/rooms/${roomId}/messages`, ({ body }) => {
           try {
-            const payload = JSON.parse(body)
+            const payload = JSON.parse(body) as WSIncoming
             console.log("[WebSocket] 메시지 데이터:", payload)
 
             // 삭제 이벤트 처리
             if (payload.event === "message:delete") {
               console.log("[WebSocket] 메시지 삭제:", payload.data.messageId)
-              setMessages((prev) => prev.filter((m) => m.messageId !== payload.data.messageId))
+              setMessages(prev => prev.filter(m => m.messageId !== payload.data.messageId))
               return
             }
 
-            // 새 메시지 처리 (직접 형식)
-            if (payload.messageId && payload.senderId && payload.content) {
-              const msg = payload as Message
-              console.log("[WebSocket] 새 메시지 (직접):", msg)
-              setMessages((prev) => {
-                if (prev.some((x) => x.messageId === msg.messageId)) return prev
-                return sortMessagesByTime([...prev, msg])
-              })
-              return
-            }
-
-            // 새 메시지 처리 (이벤트 래핑)
+            // 생성 이벤트 처리 (message, message:created)
             if (payload.event === "message" || payload.event === "message:created") {
-              const msg = payload.data as Message
+              const msg = payload.data
               console.log("[WebSocket] 새 메시지 (이벤트):", msg)
-              setMessages((prev) => {
-                if (prev.some((x) => x.messageId === msg.messageId)) return prev
+              setMessages(prev => {
+                // 중복 방지
+                if (prev.some(x => x.messageId === msg.messageId)) return prev
                 return sortMessagesByTime([...prev, msg])
               })
             }
