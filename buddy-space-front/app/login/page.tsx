@@ -59,7 +59,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     // 기존 OAuth2 엔드포인트 사용
-    window.location.href = `${AUTH_BASE}/oauth2/authorization/google`
+   window.location.href = `${AUTH_BASE}/oauth2/authorization/google`
   }
 
   return (
