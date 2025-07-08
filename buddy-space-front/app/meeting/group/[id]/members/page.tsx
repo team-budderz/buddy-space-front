@@ -295,85 +295,100 @@ export default function MembersPage() {
   }
 
 
-  const startDirectChat = async (memberId: number, memberName: string) => {
-    try {
-      // 0) 토큰, 유저 정보 검증
-      const token = await getValidToken()
-      if (!token) {
-        alert("로그인이 필요합니다.")
-        return
-      }
-      if (!currentUser) {
-        alert("사용자 정보가 없습니다.")
-        return
-      }
-
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      }
-
-      let roomId: number
-
-      // 1) 무조건 생성 시도
-      try {
-        const res = await api.post(
-          `/group/${groupId}/chat/rooms`,
-          {
-            name: `${currentUser.name}와 ${memberName}의 채팅`,
-            description: "1:1 대화방",
-            chatRoomType: "DIRECT",
-            participantIds: [currentUser.id, memberId],
-          },
-          { headers, withCredentials: true }
-        )
-        roomId = res.data.result.roomId
-      } catch (err: any) {
-        // 409 Conflict: 이미 DIRECT 방이 존재하는 경우
-        if (err.response?.status === 409) {
-          // 2) 기존 방 ID 찾기
-          const listRes = await api.get(
-            `/group/${groupId}/chat/rooms/my`,
-            { headers, withCredentials: true }
-          )
-          const chatRooms = listRes.data.result as any[]
-
-          const direct = chatRooms.find(r => {
-            if (r.chatRoomType !== "DIRECT") return false
-            const ids = r.participants
-              .map((p: any) => p.userId)                // userId 필드로 매핑
-              .sort((a: number, b: number) => a - b)    // 숫자형 오름차순 정렬
-            const targetIds = [currentUser.id, memberId].sort((a, b) => a - b)
-            return JSON.stringify(ids) === JSON.stringify(targetIds)
-          })
-
-          if (!direct) {
-            throw new Error("기존 1:1 방을 찾을 수 없습니다.")
-          }
-          roomId = direct.roomId
-        } else {
-          throw err
-        }
-      }
-
-      // 3) 만든 방 혹은 기존 방으로 이동/오픈
-      window.dispatchEvent(
-        new CustomEvent("openDirectChat", {
-          detail: {
-            roomId,
-            roomName: `${memberName}과의 채팅`,
-            roomType: "DIRECT",
-            groupId: Number(groupId),
-          },
-        })
-      )
-      closeModal()
-
-    } catch (err: any) {
-      console.error("1:1 채팅방 열기 실패", err)
-      alert("1:1 채팅방 열기 실패")
+ const startDirectChat = async (memberId: number, memberName: string) => {
+  try {
+    // 0) 토큰, 유저 정보 검증
+    const token = await getValidToken();
+    if (!token) {
+      alert("로그인이 필요합니다.");
+      return;
     }
+    if (!currentUser) {
+      alert("사용자 정보가 없습니다.");
+      return;
+    }
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+
+    let roomId: number;
+
+    try {
+      const res = await api.post(
+        `/group/${groupId}/chat/rooms`,
+        {
+          name: `${currentUser.name}와 ${memberName}의 채팅`,
+          description: "1:1 대화방",
+          chatRoomType: "DIRECT",
+          participantIds: [currentUser.id, memberId],
+        },
+        { headers, withCredentials: true }
+      );
+      roomId = res.data.result.roomId;
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        const listRes = await api.get(
+          `/group/${groupId}/chat/rooms/my`,
+          { headers, withCredentials: true }
+        );
+        console.log("🔍 [DEBUG 1] 내 채팅방 목록 전체:", listRes.data.result);
+
+        const chatRooms = listRes.data.result as any[];
+
+        chatRooms.forEach((room, idx) => {
+          console.log(`— [DEBUG 2] 방[${idx}]`, {
+            roomId: room.roomId,
+            type: room.chatRoomType,
+            participants: room.participants.map((p: any) => ({
+              raw: p,
+              keys: Object.keys(p),
+              idValue: p.userId ?? p.id ?? p.memberId,
+            })),
+          });
+        });
+
+        const targetIds = [currentUser.id, memberId].sort((a, b) => a - b);
+        console.log("🔍 [DEBUG 3] 비교 대상 targetIds:", targetIds);
+
+        const direct = chatRooms.find(r => {
+          if (r.chatRoomType !== "DIRECT") return false;
+          const ids = r.participants
+            .map((p: any) => p.userId ?? p.id ?? p.memberId)
+            .sort((a: number, b: number) => a - b);
+          console.log(`   [DEBUG 3] 방 ${r.roomId} IDs:`, ids);
+          return JSON.stringify(ids) === JSON.stringify(targetIds);
+        });
+
+        console.log("🔍 [DEBUG 3] find 결과 direct:", direct);
+
+        if (!direct) {
+          throw new Error("기존 1:1 방을 찾을 수 없습니다.");
+        }
+        roomId = direct.roomId;
+      } else {
+        throw err;
+      }
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("openDirectChat", {
+        detail: {
+          roomId,
+          roomName: `${memberName}과의 채팅`,
+          roomType: "DIRECT",
+          groupId: Number(groupId),
+        },
+      })
+    );
+    closeModal();
+  } catch (err: any) {
+    console.error("1:1 채팅방 열기 실패", err);
+    alert("1:1 채팅방 열기 실패");
   }
+};
+
 
 
 
