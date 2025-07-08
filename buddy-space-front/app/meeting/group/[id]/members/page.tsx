@@ -297,24 +297,28 @@ export default function MembersPage() {
 
   const startDirectChat = async (memberId: number, memberName: string) => {
     try {
+      // 0) 토큰, 유저 정보 검증
       const token = await getValidToken()
       if (!token) {
         alert("로그인이 필요합니다.")
         return
       }
-
-      const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
       if (!currentUser) {
         alert("사용자 정보가 없습니다.")
         return
+      }
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       }
 
       let roomId: number
 
       // 1) 무조건 생성 시도
       try {
-        const res = await axios.post(
-          `${API_BASE}/group/${groupId}/chat/rooms`,
+        const res = await api.post(
+          `/group/${groupId}/chat/rooms`,
           {
             name: `${currentUser.name}와 ${memberName}의 채팅`,
             description: "1:1 대화방",
@@ -325,16 +329,27 @@ export default function MembersPage() {
         )
         roomId = res.data.result.roomId
       } catch (err: any) {
+        // 409 Conflict: 이미 DIRECT 방이 존재하는 경우
         if (err.response?.status === 409) {
           // 2) 기존 방 ID 찾기
-          const listRes = await api.get(`/group/${groupId}/chat/rooms/my`, { headers })
+          const listRes = await api.get(
+            `/group/${groupId}/chat/rooms/my`,
+            { headers, withCredentials: true }
+          )
           const chatRooms = listRes.data.result as any[]
+
           const direct = chatRooms.find(r => {
             if (r.chatRoomType !== "DIRECT") return false
-            const ids = r.participants.map((p: any) => p.id).sort()
-            return JSON.stringify(ids) === JSON.stringify([currentUser.id, memberId].sort())
+            const ids = r.participants
+              .map((p: any) => p.userId)                // userId 필드로 매핑
+              .sort((a: number, b: number) => a - b)    // 숫자형 오름차순 정렬
+            const targetIds = [currentUser.id, memberId].sort((a, b) => a - b)
+            return JSON.stringify(ids) === JSON.stringify(targetIds)
           })
-          if (!direct) throw new Error("기존 1:1 방을 찾을 수 없습니다.")
+
+          if (!direct) {
+            throw new Error("기존 1:1 방을 찾을 수 없습니다.")
+          }
           roomId = direct.roomId
         } else {
           throw err
@@ -352,13 +367,14 @@ export default function MembersPage() {
           },
         })
       )
-
       closeModal()
+
     } catch (err: any) {
       console.error("1:1 채팅방 열기 실패", err)
       alert("1:1 채팅방 열기 실패")
     }
   }
+
 
 
 
