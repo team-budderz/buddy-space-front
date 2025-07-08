@@ -297,24 +297,25 @@ export default function MembersPage() {
 
   const startDirectChat = async (memberId: number, memberName: string) => {
     try {
-      // 0) 토큰, 유저 정보 검증
-      const token = await getValidToken()
+      // 0) 토큰·유저 검증
+      const token = await getValidToken();
       if (!token) {
-        alert("로그인이 필요합니다.")
-        return
+        alert("로그인이 필요합니다.");
+        return;
       }
       if (!currentUser) {
-        alert("사용자 정보가 없습니다.")
-        return
+        alert("사용자 정보가 없습니다.");
+        return;
       }
 
       const headers = {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
-      }
+      };
 
-      let roomId: number
+      let roomId: number;
 
+      // 1) 신규 방 생성 시도
       try {
         const res = await api.post(
           `/group/${groupId}/chat/rooms`,
@@ -325,57 +326,38 @@ export default function MembersPage() {
             participantIds: [currentUser.id, memberId],
           },
           { headers, withCredentials: true }
-        )
-        roomId = res.data.result.roomId
+        );
+        roomId = res.data.result.roomId;
+
+        // ◀ 신규 생성된 방만 여기서 OPEN
+        window.dispatchEvent(
+          new CustomEvent("openDirectChat", {
+            detail: {
+              roomId,
+              roomName: `${memberName}과의 채팅`,
+              roomType: "DIRECT",
+              groupId: Number(groupId),
+            },
+          })
+        );
+        closeModal();
+        return; // 이 이후 로직은 실행하지 않음
 
       } catch (err: any) {
+        // 409: 이미 존재
         if (err.response?.status === 409) {
-          // 2) 409 Conflict → 기존 방 목록 조회
-          const listRes = await api.get(
-            `/group/${groupId}/chat/rooms/my`,
-            { headers, withCredentials: true }
-          )
-          const chatRooms = listRes.data.result as any[]
-
-          // ── participants, chatRoomType 필드가 없으므로 ──
-          // name 필드("A, B")만으로 1:1 방 찾기
-          const direct = chatRooms.find(r => {
-            const names = r.name.split(",").map((s: string) => s.trim())
-            return (
-              names.length === 2 &&
-              names.includes(currentUser.name) &&
-              names.includes(memberName)
-            )
-          })
-
-          if (!direct) {
-            throw new Error("기존 1:1 방을 찾을 수 없습니다.")
-          }
-          roomId = direct.roomId
-
-        } else {
-          throw err
+          alert("채팅방이 이미 있습니다.");
+          return;
         }
+        // 그 외 에러는 다시 던져서 외부 catch 로감
+        throw err;
       }
 
-      // 3) 만든 방 혹은 기존 방으로 이동/오픈
-      window.dispatchEvent(
-        new CustomEvent("openDirectChat", {
-          detail: {
-            roomId,
-            roomName: `${memberName}과의 채팅`,
-            roomType: "DIRECT",
-            groupId: Number(groupId),
-          },
-        })
-      )
-      closeModal()
-
     } catch (err: any) {
-      console.error("1:1 채팅방 열기 실패", err)
-      alert("1:1 채팅방 열기 실패")
+      console.error("1:1 채팅방 열기 실패", err);
+      alert("1:1 채팅방 열기 실패");
     }
-  }
+  };
 
   const handleAuthError = () => {
     showToast("인증이 만료되었습니다. 다시 로그인해주세요.", "error")
