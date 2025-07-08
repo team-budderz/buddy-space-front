@@ -1,23 +1,23 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import api from "@/app/api"            
+import { useRouter } from "next/navigation"
+import api from "@/app/api"
 import styles from "./callback.module.css"
 
 export default function AuthCallbackPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [message, setMessage] = useState("")
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        const token = searchParams.get("token")
-        const success = searchParams.get("success")
-        const error = searchParams.get("error")
-        const errorMessage = searchParams.get("message")
+        const params = new URLSearchParams(window.location.search)
+        const token        = params.get("token")
+        const success      = params.get("success")
+        const error        = params.get("error")
+        const errorMessage = params.get("message")
 
         if (error) {
           setStatus("error")
@@ -26,10 +26,8 @@ export default function AuthCallbackPage() {
         }
 
         if (success === "true" && token) {
-          // 토큰 저장
           localStorage.setItem("accessToken", token)
 
-          // 사용자 정보 조회
           try {
             const { data: userData } = await api.get("/users/me", {
               headers: { Authorization: `Bearer ${token}` },
@@ -55,7 +53,7 @@ export default function AuthCallbackPage() {
     }
 
     handleCallback()
-  }, [searchParams, router])
+  }, [router])
 
   return (
     <div className={styles.container}>
@@ -82,10 +80,16 @@ export default function AuthCallbackPage() {
             <h2>로그인 실패</h2>
             <p>{message}</p>
             <div className={styles.buttonGroup}>
-              <button className={styles.retryButton} onClick={() => router.push("/login")}>
+              <button
+                className={styles.retryButton}
+                onClick={() => router.replace("/login")}
+              >
                 다시 시도
               </button>
-              <button className={styles.homeButton} onClick={() => router.push("/")}>
+              <button
+                className={styles.homeButton}
+                onClick={() => router.replace("/")}
+              >
                 홈으로
               </button>
             </div>
