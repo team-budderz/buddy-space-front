@@ -15,19 +15,15 @@ export default function AuthCallbackPage() {
       console.log("AuthCallbackPage mounted")
       console.log("current search:", window.location.search)
 
-      try { // 파라미터
+      try {
+        // 파라미터 파싱
         const params = new URLSearchParams(window.location.search)
         const token        = params.get("token")      // 토큰
         const success      = params.get("success")    // 성공 여부
         const error        = params.get("error")      // 에러
         const errorMessage = params.get("message")    // 에러 메시지
 
-        console.log("🔑 Parsed params →", {
-          token,
-          success,
-          error,
-          errorMessage
-        })
+        console.log("🔑 Parsed params →", { token, success, error, errorMessage })
 
         if (error) {
           console.log("⚠️ OAuth error param detected:", error)
@@ -37,7 +33,7 @@ export default function AuthCallbackPage() {
         }
 
         if (success === "true" && token) {
-          console.log("success === 'true' && token present, proceeding to store token")
+          console.log("success === 'true' && token present")
           localStorage.setItem("accessToken", token)
 
           try {
@@ -45,7 +41,7 @@ export default function AuthCallbackPage() {
             const { data: userData } = await api.get("/users/me", {
               headers: { Authorization: `Bearer ${token}` },
             })
-            console.log("   /users/me response:", userData)
+            console.log("/users/me response:", userData)
             if (userData.result?.email) {
               localStorage.setItem("userEmail", userData.result.email)
             }
@@ -56,14 +52,19 @@ export default function AuthCallbackPage() {
           console.log("setting status=success and redirecting to /meeting")
           setStatus("success")
           setMessage("로그인 성공!")
+
           router.replace("/meeting")
+          console.log("router.replace('/meeting') called")
+
+          console.log("➡️ forcing full page redirect via window.location.href")
+          window.location.href = "/meeting"
         } else {
           console.log("success/token 조건 불만족, showing error")
           setStatus("error")
           setMessage("유효하지 않은 로그인 응답입니다.")
         }
       } catch (e) {
-        console.error("handleCallback 예외 발생:", e)
+        console.error("🔥 handleCallback 예외 발생:", e)
         setStatus("error")
         setMessage("로그인 처리 중 오류가 발생했습니다.")
       }
