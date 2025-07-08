@@ -1,11 +1,7 @@
-import { Suspense } from "react";
-import CallbackClient from "./callbackclient";
+"use client"           
 
-export const dynamic = 'force-dynamic'; 
+import CallbackClient from "./callbackclient"
+
 export default function Page() {
-  return (
-    <Suspense fallback={<p>로그인 처리 중…</p>}>
-      <CallbackClient />
-    </Suspense>
-  );
+  return <CallbackClient />
 }
